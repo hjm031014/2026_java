@@ -1,6 +1,10 @@
-# Campus Marketplace Backend
+# team-backend
 
-Spring Boot 3 · Java 21 · Gradle. [API 명세서](../API.md) · [백엔드 파트 분담](../BACKEND_TASKS.md)
+Spring Boot 4 · Java 17 · Gradle(`com.nsu.team`). [API 명세서](../API.md) · [백엔드 파트 분담](../BACKEND_TASKS.md)
+
+> Jackson 3(`tools.jackson.*`)을 사용합니다. `com.fasterxml.jackson.databind` 가 아니라
+> `tools.jackson.databind` 패키지의 클래스(`ObjectMapper`, `JsonNode` 등)를 import 하세요.
+> `JsonNode.asText()` 도 `asString()` 으로 대체되었습니다.
 
 ## 실행 방법
 
@@ -48,3 +52,6 @@ DB(Neon)는 아직 팀원이 URL을 공유하기 전까지는 로컬 PostgreSQL 
 - 조회 이벤트(`POST /posts/{postId}/views`)는 CSRF 보호 대상 경로로 이미 등록해뒀습니다
   (`CsrfProtectionFilter`).
 - `ErrorCode` 에 모든 오류 코드가 이미 정의되어 있으니 새로 추가하지 말고 재사용하세요.
+- Spring Boot 4 / Jackson 3 관련 패키지 변경(위 안내 참고), `HttpStatus.PAYLOAD_TOO_LARGE` →
+  `HttpStatus.CONTENT_TOO_LARGE`, `@AutoConfigureMockMvc` →
+  `org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc` 로 이동한 점도 참고하세요.

@@ -16,6 +16,10 @@
 | 페이지네이션 공통 모듈 | 커서 기반 페이지네이션 유틸(`nextCursor`, `hasNext`), `limit` 기본 20/최대 100 검증 |
 | 낙관적 잠금 공통 처리 | `version` 필드 충돌 시 `409 VERSION_CONFLICT` 반환하는 공통 로직 |
 
+> **진행 상황:** `backend/` 에 파트 A(공통 인프라 + 회원·인증·이미지) 스켈레톤이 구현되어 있습니다.
+> B, C 는 이 프로젝트 위에 각자 패키지(`domain/post`, `domain/comment`, `domain/favorite`, `domain/chat` 등)를
+> 추가해 이어서 개발하면 됩니다. 자세한 내용은 [backend/README.md](backend/README.md) 참고.
+
 ## 담당자 A — 회원·인증·이미지
 
 | 기능 | 엔드포인트 |

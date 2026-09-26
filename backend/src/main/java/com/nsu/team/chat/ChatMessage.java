@@ -46,4 +46,8 @@ public class ChatMessage {
         this.content = content;
         this.createdAt = createdAt;
     }
+
+    public boolean hasSamePayload(UserAccount requestedSender, String requestedContent) {
+        return sender.getId().equals(requestedSender.getId()) && content.equals(requestedContent);
+    }
 }

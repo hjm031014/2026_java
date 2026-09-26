@@ -38,7 +38,7 @@ public class ChatController {
     }
 
     @GetMapping("/{roomId}/messages")
-    ApiResponse<Object> listMessages(
+    ApiResponse<ChatDtos.MessagePage> listMessages(
             @PathVariable Long roomId,
             @RequestParam(required = false) String cursor,
             @RequestParam(required = false) Long afterSequence,

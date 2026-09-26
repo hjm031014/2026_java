@@ -25,5 +25,11 @@ public interface FavoriteRepository extends JpaRepository<Favorite, FavoriteId> 
                             @Param("cursorId") Long cursorId,
                             Pageable pageable);
 
-    long countByIdPostId(Long postId);
+    @Query("""
+            select f.id.postId as postId, count(f) as favoriteCount
+            from Favorite f
+            where f.id.postId in :postIds
+            group by f.id.postId
+            """)
+    List<FavoriteCount> countByPostIds(@Param("postIds") List<Long> postIds);
 }

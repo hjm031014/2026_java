@@ -18,4 +18,20 @@ public class ApiException extends RuntimeException {
     public static ApiException notFound() {
         return new ApiException(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "요청한 자원을 찾을 수 없습니다.");
     }
+
+    public static ApiException unauthenticated() {
+        return new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHENTICATED", "인증이 필요합니다.");
+    }
+
+    public static ApiException forbidden(String message) {
+        return new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", message);
+    }
+
+    public static ApiException validation(String message) {
+        return new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", message);
+    }
+
+    public static ApiException conflict(String code, String message) {
+        return new ApiException(HttpStatus.CONFLICT, code, message);
+    }
 }

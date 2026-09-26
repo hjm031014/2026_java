@@ -5,12 +5,15 @@ import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 
 @Component
 public class CursorCodec {
     public String encode(Instant time, long id) {
-        String raw = time + "|" + id;
+        // PostgreSQL timestamptz stores microseconds. Normalizing prevents a just-persisted
+        // entity's nanoseconds from making the boundary row reappear on the next page.
+        String raw = time.truncatedTo(ChronoUnit.MICROS) + "|" + id;
         return Base64.getUrlEncoder().withoutPadding().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
     }
 
@@ -23,6 +26,10 @@ public class CursorCodec {
         } catch (RuntimeException exception) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_CURSOR", "유효하지 않은 커서입니다.");
         }
+    }
+
+    public Cursor decodeNullable(String cursor) {
+        return cursor == null || cursor.isBlank() ? null : decode(cursor);
     }
 
     public record Cursor(Instant time, long id) {}

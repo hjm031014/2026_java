@@ -90,11 +90,17 @@ class CommunicationIntegrationTest {
         favoriteService.add(post.getId());
         favoriteService.add(post.getId());
         assertThat(favorites.count()).isEqualTo(1);
-        assertThat(favoriteService.list(null, 20).items()).hasSize(1);
+
+        authenticate(outsider);
+        favoriteService.add(post.getId());
+        authenticate(buyer);
+        var favoritePage = favoriteService.list(null, 20);
+        assertThat(favoritePage.items()).hasSize(1);
+        assertThat(favoritePage.items().get(0).post().favoriteCount()).isEqualTo(2);
 
         favoriteService.remove(post.getId());
         favoriteService.remove(post.getId());
-        assertThat(favorites.count()).isZero();
+        assertThat(favorites.count()).isEqualTo(1);
     }
 
     @Test
@@ -133,6 +139,8 @@ class CommunicationIntegrationTest {
         assertThat(retriedMessage.created()).isFalse();
         assertThat(messages.count()).isEqualTo(1);
         assertThat(firstMessage.value().sequence()).isEqualTo(1);
+        assertThat(chatService.listRooms(null, 20).items().get(0).lastMessage().content())
+                .isEqualTo("안녕하세요");
 
         assertThatThrownBy(() -> chatService.sendMessage(
                 Long.valueOf(firstRoom.value().id()), new ChatDtos.SendMessageRequest(clientId, "다른 내용")))

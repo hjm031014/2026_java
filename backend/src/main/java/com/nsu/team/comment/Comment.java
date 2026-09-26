@@ -39,6 +39,10 @@ public class Comment {
 
     public void delete() { deletedAt = Instant.now(); }
 
+    public boolean isWrittenBy(UserAccount user) {
+        return author.getId().equals(user.getId());
+    }
+
     @PrePersist void created() {
         Instant now = Instant.now();
         createdAt = now;

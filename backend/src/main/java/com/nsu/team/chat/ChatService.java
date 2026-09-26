@@ -2,7 +2,7 @@ package com.nsu.team.chat;
 
 import com.nsu.team.common.ApiException;
 import com.nsu.team.common.CursorCodec;
-import com.nsu.team.communication.dto.PageInfo;
+import com.nsu.team.common.KeysetPageFactory;
 import com.nsu.team.communication.dto.PagedItems;
 import com.nsu.team.communication.dto.PublicUserResponse;
 import com.nsu.team.post.SalePost;
@@ -10,13 +10,15 @@ import com.nsu.team.post.SalePostRepository;
 import com.nsu.team.user.CurrentUserProvider;
 import com.nsu.team.user.UserAccount;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -26,14 +28,17 @@ public class ChatService {
     private final SalePostRepository posts;
     private final CurrentUserProvider currentUser;
     private final CursorCodec cursors;
+    private final KeysetPageFactory pageFactory;
 
     public ChatService(ChatRoomRepository rooms, ChatMessageRepository messages,
-                       SalePostRepository posts, CurrentUserProvider currentUser, CursorCodec cursors) {
+                       SalePostRepository posts, CurrentUserProvider currentUser, CursorCodec cursors,
+                       KeysetPageFactory pageFactory) {
         this.rooms = rooms;
         this.messages = messages;
         this.posts = posts;
         this.currentUser = currentUser;
         this.cursors = cursors;
+        this.pageFactory = pageFactory;
     }
 
     @Transactional
@@ -42,42 +47,37 @@ public class ChatService {
         SalePost post = posts.findByIdForUpdate(request.postId()).orElseThrow(ApiException::notFound);
         if (post.isDeleted()) throw ApiException.notFound();
         if (post.getSeller().getId().equals(buyer.getId())) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "본인의 판매글에는 채팅방을 만들 수 없습니다.");
+            throw ApiException.forbidden("본인의 판매글에는 채팅방을 만들 수 없습니다.");
         }
         return rooms.findByPostIdAndBuyerId(post.getId(), buyer.getId())
-                .map(room -> new ChatDtos.CreationResult<>(toRoom(room, buyer), false))
+                .map(room -> new ChatDtos.CreationResult<>(toRoom(room, buyer, findLastMessage(room.getId())), false))
                 .orElseGet(() -> {
                     ChatRoom room = rooms.saveAndFlush(new ChatRoom(post, buyer));
-                    return new ChatDtos.CreationResult<>(toRoom(room, buyer), true);
+                    return new ChatDtos.CreationResult<>(toRoom(room, buyer, null), true);
                 });
     }
 
     public PagedItems<ChatDtos.RoomResponse> listRooms(String cursor, int limit) {
         UserAccount user = currentUser.require();
-        Instant cursorTime = null;
-        Long cursorId = null;
-        if (cursor != null && !cursor.isBlank()) {
-            CursorCodec.Cursor decoded = cursors.decode(cursor);
-            cursorTime = decoded.time();
-            cursorId = decoded.id();
-        }
-        List<ChatRoom> found = new ArrayList<>(rooms.findPage(
-                user.getId(), cursorTime, cursorId, PageRequest.of(0, limit + 1)));
-        boolean hasNext = found.size() > limit;
-        if (hasNext) found.remove(found.size() - 1);
-        String next = hasNext && !found.isEmpty()
-                ? cursors.encode(found.get(found.size() - 1).getUpdatedAt(), found.get(found.size() - 1).getId())
-                : null;
-        return new PagedItems<>(found.stream().map(room -> toRoom(room, user)).toList(),
-                new PageInfo(next, hasNext));
+        CursorCodec.Cursor decoded = cursors.decodeNullable(cursor);
+        Instant cursorTime = decoded == null ? null : decoded.time();
+        Long cursorId = decoded == null ? null : decoded.id();
+        List<ChatRoom> found = rooms.findPage(
+                user.getId(), cursorTime, cursorId, PageRequest.of(0, limit + 1));
+        Map<Long, ChatMessage> lastMessages = loadLastMessages(found);
+        return pageFactory.create(
+                found,
+                limit,
+                ChatRoom::getUpdatedAt,
+                ChatRoom::getId,
+                room -> toRoom(room, user, lastMessages.get(room.getId())));
     }
 
-    public Object listMessages(Long roomId, String cursor, Long afterSequence, int limit) {
+    public ChatDtos.MessagePage listMessages(Long roomId, String cursor, Long afterSequence, int limit) {
         UserAccount user = currentUser.require();
         requireParticipant(roomId, user, false);
         if (cursor != null && afterSequence != null) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
-                    "cursor와 afterSequence는 함께 사용할 수 없습니다.");
+            throw ApiException.validation("cursor와 afterSequence는 함께 사용할 수 없습니다.");
         }
         if (afterSequence != null) return listNewMessages(roomId, afterSequence, limit);
         return listHistory(roomId, cursor, limit);
@@ -92,9 +92,8 @@ public class ChatService {
         var existing = messages.findByClientId(roomId, clientId);
         if (existing.isPresent()) {
             ChatMessage message = existing.get();
-            if (!message.getSender().getId().equals(sender.getId())
-                    || !message.getContent().equals(request.content().trim())) {
-                throw new ApiException(HttpStatus.CONFLICT, "IDEMPOTENCY_CONFLICT",
+            if (!message.hasSamePayload(sender, request.content().trim())) {
+                throw ApiException.conflict("IDEMPOTENCY_CONFLICT",
                         "같은 clientMessageId가 다른 메시지에 사용되었습니다.");
             }
             return new ChatDtos.CreationResult<>(ChatDtos.MessageResponse.from(message), false);
@@ -106,28 +105,20 @@ public class ChatService {
         return new ChatDtos.CreationResult<>(ChatDtos.MessageResponse.from(saved), true);
     }
 
-    private PagedItems<ChatDtos.MessageResponse> listHistory(Long roomId, String cursor, int limit) {
-        Instant cursorTime = null;
-        Long cursorId = null;
-        if (cursor != null && !cursor.isBlank()) {
-            CursorCodec.Cursor decoded = cursors.decode(cursor);
-            cursorTime = decoded.time();
-            cursorId = decoded.id();
-        }
-        List<ChatMessage> found = new ArrayList<>(messages.findHistory(
-                roomId, cursorTime, cursorId, PageRequest.of(0, limit + 1)));
-        boolean hasNext = found.size() > limit;
-        if (hasNext) found.remove(found.size() - 1);
-        String next = hasNext && !found.isEmpty()
-                ? cursors.encode(found.get(found.size() - 1).getCreatedAt(), found.get(found.size() - 1).getId())
-                : null;
-        return new PagedItems<>(found.stream().map(ChatDtos.MessageResponse::from).toList(),
-                new PageInfo(next, hasNext));
+    private ChatDtos.HistoryMessages listHistory(Long roomId, String cursor, int limit) {
+        CursorCodec.Cursor decoded = cursors.decodeNullable(cursor);
+        Instant cursorTime = decoded == null ? null : decoded.time();
+        Long cursorId = decoded == null ? null : decoded.id();
+        List<ChatMessage> found = messages.findHistory(
+                roomId, cursorTime, cursorId, PageRequest.of(0, limit + 1));
+        PagedItems<ChatDtos.MessageResponse> page = pageFactory.create(
+                found, limit, ChatMessage::getCreatedAt, ChatMessage::getId, ChatDtos.MessageResponse::from);
+        return new ChatDtos.HistoryMessages(page.items(), page.page());
     }
 
     private ChatDtos.NewMessages listNewMessages(Long roomId, long afterSequence, int limit) {
         if (afterSequence < 0) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "afterSequence는 0 이상이어야 합니다.");
+            throw ApiException.validation("afterSequence는 0 이상이어야 합니다.");
         }
         List<ChatMessage> found = new ArrayList<>(messages.findAfter(
                 roomId, afterSequence, PageRequest.of(0, limit + 1)));
@@ -141,21 +132,32 @@ public class ChatService {
     private ChatRoom requireParticipant(Long roomId, UserAccount user, boolean lock) {
         ChatRoom room = (lock ? rooms.findByIdForUpdate(roomId) : rooms.findDetailedById(roomId))
                 .orElseThrow(ApiException::notFound);
-        if (!room.getSeller().getId().equals(user.getId()) && !room.getBuyer().getId().equals(user.getId())) {
+        if (!room.hasParticipant(user)) {
             throw ApiException.notFound();
         }
         return room;
     }
 
-    private ChatDtos.RoomResponse toRoom(ChatRoom room, UserAccount viewer) {
-        UserAccount other = room.getSeller().getId().equals(viewer.getId()) ? room.getBuyer() : room.getSeller();
+    private ChatDtos.RoomResponse toRoom(ChatRoom room, UserAccount viewer, ChatMessage lastMessage) {
+        UserAccount other = room.otherParticipant(viewer);
         SalePost post = room.getPost();
         ChatDtos.PostReference postReference = new ChatDtos.PostReference(
                 post.getId().toString(), post.getTitle(), post.getStatus().name(), post.isDeleted());
-        ChatDtos.MessageResponse lastMessage = messages.findFirstByRoomIdOrderBySequenceDesc(room.getId())
-                .map(ChatDtos.MessageResponse::from).orElse(null);
+        ChatDtos.MessageResponse lastMessageResponse = lastMessage == null
+                ? null : ChatDtos.MessageResponse.from(lastMessage);
         return new ChatDtos.RoomResponse(
-                room.getId().toString(), postReference, PublicUserResponse.from(other), lastMessage,
+                room.getId().toString(), postReference, PublicUserResponse.from(other), lastMessageResponse,
                 room.getCreatedAt(), room.getUpdatedAt());
+    }
+
+    private ChatMessage findLastMessage(Long roomId) {
+        return messages.findFirstByRoomIdOrderBySequenceDesc(roomId).orElse(null);
+    }
+
+    private Map<Long, ChatMessage> loadLastMessages(List<ChatRoom> roomPage) {
+        List<Long> roomIds = roomPage.stream().map(ChatRoom::getId).toList();
+        if (roomIds.isEmpty()) return Map.of();
+        return messages.findLastByRoomIds(roomIds).stream()
+                .collect(Collectors.toMap(message -> message.getRoom().getId(), Function.identity()));
     }
 }

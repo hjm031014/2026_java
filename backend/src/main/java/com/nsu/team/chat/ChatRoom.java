@@ -52,6 +52,14 @@ public class ChatRoom {
         return lastSequence;
     }
 
+    public boolean hasParticipant(UserAccount user) {
+        return seller.getId().equals(user.getId()) || buyer.getId().equals(user.getId());
+    }
+
+    public UserAccount otherParticipant(UserAccount user) {
+        return seller.getId().equals(user.getId()) ? buyer : seller;
+    }
+
     @PrePersist void created() {
         Instant now = Instant.now();
         createdAt = now;

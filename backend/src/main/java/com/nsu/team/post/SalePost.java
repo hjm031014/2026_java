@@ -1,6 +1,6 @@
 package com.nsu.team.post;
 
-import com.nsu.team.user.UserAccount;
+import com.nsu.team.domain.user.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -20,7 +20,7 @@ public class SalePost {
     private Long id;
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "seller_id", nullable = false)
-    private UserAccount seller;
+    private User seller;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     private Category category;
@@ -44,7 +44,7 @@ public class SalePost {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    public SalePost(UserAccount seller, Category category, MeetupLocation meetupLocation,
+    public SalePost(User seller, Category category, MeetupLocation meetupLocation,
                     String title, String description, BigDecimal price) {
         this.seller = seller;
         this.category = category;

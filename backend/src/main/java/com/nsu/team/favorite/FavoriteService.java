@@ -7,7 +7,7 @@ import com.nsu.team.communication.dto.PagedItems;
 import com.nsu.team.post.SalePost;
 import com.nsu.team.post.SalePostRepository;
 import com.nsu.team.user.CurrentUserProvider;
-import com.nsu.team.user.UserAccount;
+import com.nsu.team.domain.user.User;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,7 +34,7 @@ public class FavoriteService {
 
     @Transactional
     public void add(Long postId) {
-        UserAccount user = currentUser.require();
+        User user = currentUser.require();
         SalePost post = requireVisiblePost(postId);
         FavoriteId id = new FavoriteId(user.getId(), postId);
         if (!favorites.existsById(id)) favorites.save(new Favorite(user, post));
@@ -42,12 +42,12 @@ public class FavoriteService {
 
     @Transactional
     public void remove(Long postId) {
-        UserAccount user = currentUser.require();
+        User user = currentUser.require();
         favorites.deleteById(new FavoriteId(user.getId(), postId));
     }
 
     public PagedItems<FavoriteDtos.FavoriteItem> list(String cursor, int limit) {
-        UserAccount user = currentUser.require();
+        User user = currentUser.require();
         Instant cursorTime = null;
         Long cursorId = null;
         if (cursor != null && !cursor.isBlank()) {

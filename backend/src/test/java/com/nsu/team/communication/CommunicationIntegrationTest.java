@@ -9,8 +9,9 @@ import com.nsu.team.favorite.FavoriteRepository;
 import com.nsu.team.favorite.FavoriteService;
 import com.nsu.team.post.SalePost;
 import com.nsu.team.post.SalePostRepository;
-import com.nsu.team.user.UserAccount;
-import com.nsu.team.user.UserAccountRepository;
+import com.nsu.team.domain.user.User;
+import com.nsu.team.domain.user.UserRepository;
+import com.nsu.team.domain.user.UserStatus;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,7 +36,7 @@ class CommunicationIntegrationTest {
     @Autowired CommentService commentService;
     @Autowired FavoriteService favoriteService;
     @Autowired ChatService chatService;
-    @Autowired UserAccountRepository users;
+    @Autowired UserRepository users;
     @Autowired SalePostRepository posts;
     @Autowired CommentRepository comments;
     @Autowired FavoriteRepository favorites;
@@ -43,18 +44,27 @@ class CommunicationIntegrationTest {
     @Autowired ChatMessageRepository messages;
     @Autowired EntityManager entityManager;
 
-    UserAccount seller;
-    UserAccount buyer;
-    UserAccount outsider;
+    User seller;
+    User buyer;
+    User outsider;
     SalePost post;
 
     @BeforeEach
     void setUp() {
-        seller = users.save(new UserAccount("seller@example.com", "hash", "seller"));
-        buyer = users.save(new UserAccount("buyer@example.com", "hash", "buyer"));
-        outsider = users.save(new UserAccount("outsider@example.com", "hash", "outsider"));
+        seller = users.save(newUser("seller@example.com", "seller"));
+        buyer = users.save(newUser("buyer@example.com", "buyer"));
+        outsider = users.save(newUser("outsider@example.com", "outsider"));
         post = posts.save(new SalePost(seller, null, null, "책 판매", "깨끗합니다", BigDecimal.valueOf(12000)));
         entityManager.flush();
+    }
+
+    private static User newUser(String email, String nickname) {
+        return User.builder()
+                .email(email)
+                .passwordHash("hash")
+                .nickname(nickname)
+                .status(UserStatus.ACTIVE)
+                .build();
     }
 
     @AfterEach
@@ -170,7 +180,7 @@ class CommunicationIntegrationTest {
         assertThat(data.hasMore()).isFalse();
     }
 
-    private void authenticate(UserAccount user) {
+    private void authenticate(User user) {
         var authentication = new UsernamePasswordAuthenticationToken(
                 user.getEmail(), "n/a", List.of(new SimpleGrantedAuthority("ROLE_USER")));
         SecurityContextHolder.getContext().setAuthentication(authentication);

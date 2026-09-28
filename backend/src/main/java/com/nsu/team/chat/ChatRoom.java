@@ -1,7 +1,7 @@
 package com.nsu.team.chat;
 
 import com.nsu.team.post.SalePost;
-import com.nsu.team.user.UserAccount;
+import com.nsu.team.domain.user.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -26,10 +26,10 @@ public class ChatRoom {
     private SalePost post;
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "seller_id", nullable = false)
-    private UserAccount seller;
+    private User seller;
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "buyer_id", nullable = false)
-    private UserAccount buyer;
+    private User buyer;
     @Column(name = "last_message_at")
     private Instant lastMessageAt;
     @Column(name = "last_sequence", nullable = false)
@@ -39,7 +39,7 @@ public class ChatRoom {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    public ChatRoom(SalePost post, UserAccount buyer) {
+    public ChatRoom(SalePost post, User buyer) {
         this.post = post;
         this.seller = post.getSeller();
         this.buyer = buyer;

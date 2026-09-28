@@ -8,7 +8,7 @@ import com.nsu.team.communication.dto.PublicUserResponse;
 import com.nsu.team.post.SalePost;
 import com.nsu.team.post.SalePostRepository;
 import com.nsu.team.user.CurrentUserProvider;
-import com.nsu.team.user.UserAccount;
+import com.nsu.team.domain.user.User;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -38,7 +38,7 @@ public class ChatService {
 
     @Transactional
     public ChatDtos.CreationResult<ChatDtos.RoomResponse> createRoom(ChatDtos.CreateRoomRequest request) {
-        UserAccount buyer = currentUser.require();
+        User buyer = currentUser.require();
         SalePost post = posts.findByIdForUpdate(request.postId()).orElseThrow(ApiException::notFound);
         if (post.isDeleted()) throw ApiException.notFound();
         if (post.getSeller().getId().equals(buyer.getId())) {
@@ -53,7 +53,7 @@ public class ChatService {
     }
 
     public PagedItems<ChatDtos.RoomResponse> listRooms(String cursor, int limit) {
-        UserAccount user = currentUser.require();
+        User user = currentUser.require();
         Instant cursorTime = null;
         Long cursorId = null;
         if (cursor != null && !cursor.isBlank()) {
@@ -73,7 +73,7 @@ public class ChatService {
     }
 
     public Object listMessages(Long roomId, String cursor, Long afterSequence, int limit) {
-        UserAccount user = currentUser.require();
+        User user = currentUser.require();
         requireParticipant(roomId, user, false);
         if (cursor != null && afterSequence != null) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
@@ -86,7 +86,7 @@ public class ChatService {
     @Transactional
     public ChatDtos.CreationResult<ChatDtos.MessageResponse> sendMessage(
             Long roomId, ChatDtos.SendMessageRequest request) {
-        UserAccount sender = currentUser.require();
+        User sender = currentUser.require();
         ChatRoom room = requireParticipant(roomId, sender, true);
         String clientId = request.clientMessageId().toString();
         var existing = messages.findByClientId(roomId, clientId);
@@ -138,7 +138,7 @@ public class ChatService {
                 found.stream().map(ChatDtos.MessageResponse::from).toList(), next, hasMore);
     }
 
-    private ChatRoom requireParticipant(Long roomId, UserAccount user, boolean lock) {
+    private ChatRoom requireParticipant(Long roomId, User user, boolean lock) {
         ChatRoom room = (lock ? rooms.findByIdForUpdate(roomId) : rooms.findDetailedById(roomId))
                 .orElseThrow(ApiException::notFound);
         if (!room.getSeller().getId().equals(user.getId()) && !room.getBuyer().getId().equals(user.getId())) {
@@ -147,8 +147,8 @@ public class ChatService {
         return room;
     }
 
-    private ChatDtos.RoomResponse toRoom(ChatRoom room, UserAccount viewer) {
-        UserAccount other = room.getSeller().getId().equals(viewer.getId()) ? room.getBuyer() : room.getSeller();
+    private ChatDtos.RoomResponse toRoom(ChatRoom room, User viewer) {
+        User other = room.getSeller().getId().equals(viewer.getId()) ? room.getBuyer() : room.getSeller();
         SalePost post = room.getPost();
         ChatDtos.PostReference postReference = new ChatDtos.PostReference(
                 post.getId().toString(), post.getTitle(), post.getStatus().name(), post.isDeleted());

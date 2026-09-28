@@ -7,7 +7,7 @@ import com.nsu.team.communication.dto.PagedItems;
 import com.nsu.team.post.SalePost;
 import com.nsu.team.post.SalePostRepository;
 import com.nsu.team.user.CurrentUserProvider;
-import com.nsu.team.user.UserAccount;
+import com.nsu.team.domain.user.User;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -55,14 +55,14 @@ public class CommentService {
     @Transactional
     public CommentDtos.Response create(Long postId, CommentDtos.CreateRequest request) {
         SalePost post = requireVisiblePost(postId);
-        UserAccount author = currentUser.require();
+        User author = currentUser.require();
         Comment saved = comments.save(new Comment(post, author, request.content().trim()));
         return CommentDtos.Response.from(saved);
     }
 
     @Transactional
     public void delete(Long commentId) {
-        UserAccount user = currentUser.require();
+        User user = currentUser.require();
         Comment comment = comments.findActiveById(commentId).orElseThrow(ApiException::notFound);
         if (!comment.getAuthor().getId().equals(user.getId())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "댓글 작성자만 삭제할 수 있습니다.");

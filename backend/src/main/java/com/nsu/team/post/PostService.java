@@ -166,16 +166,16 @@ public class PostService {
         if (viewerId != null && post.getSeller().getId().equals(viewerId)) {
             return new PostDtos.ViewResponse(post.getViewCount(), false);
         }
-        String viewerKey = viewerId != null ? "user:" + viewerId : "ip:" + sha256(clientAddress);
+		String viewerKeyHash = sha256(viewerId != null ? "user:" + viewerId : "ip:" + clientAddress);
         Instant now = Instant.now();
-        PostViewEvent event = viewEventRepository.findByPostIdAndViewerKey(postId, viewerKey).orElse(null);
-        if (event != null && event.getViewedAt().isAfter(now.minus(VIEW_DEDUPLICATION_WINDOW))) {
+		PostViewEvent event = viewEventRepository.findByPostIdAndViewerKeyHash(postId, viewerKeyHash).orElse(null);
+		if (event != null && event.getLastCountedAt().isAfter(now.minus(VIEW_DEDUPLICATION_WINDOW))) {
             return new PostDtos.ViewResponse(post.getViewCount(), false);
         }
         if (event == null) {
-            viewEventRepository.saveAndFlush(new PostViewEvent(post, viewerKey, now));
+			viewEventRepository.saveAndFlush(new PostViewEvent(post, viewerId, viewerKeyHash, now));
         } else {
-            event.viewedAt(now);
+			event.countedAt(now);
         }
         post.incrementViewCount();
         postRepository.flush();

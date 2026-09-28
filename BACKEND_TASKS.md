@@ -36,7 +36,7 @@
 **핵심 규칙**
 - 이메일·닉네임 중복 검증 (`EMAIL_ALREADY_EXISTS` / `NICKNAME_ALREADY_EXISTS`)
 - 리프레시 토큰 재사용 탐지 (`REFRESH_TOKEN_REUSED`) 및 토큰 계열(rotation) 관리
-- 이미지: JPEG/PNG/WebP만 허용, 파일당 최대 10MiB → Cloudinary 업로드 후 URL만 `Image` 테이블에 저장
+- 이미지: JPEG/PNG/WebP만 허용, 파일당 최대 10MiB → Cloudinary 업로드 후 보안 URL과 삭제용 public ID를 `Image` 테이블에 저장
 - 본인 이미지만 첨부 가능, 이미 다른 글에 첨부된 이미지는 `IMAGE_ALREADY_ATTACHED`, 글에 첨부된 이미지 삭제 시도는 `IMAGE_IN_USE`
 - 위 "공통 선행 작업" 담당 겸임(우선순위 최상단)
 

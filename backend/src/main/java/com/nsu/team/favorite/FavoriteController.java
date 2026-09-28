@@ -1,7 +1,7 @@
 package com.nsu.team.favorite;
 
-import com.nsu.team.common.ApiResponse;
-import com.nsu.team.communication.dto.PagedItems;
+import com.nsu.team.common.response.ApiResponse;
+import com.nsu.team.common.response.PageResponse;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
@@ -29,7 +29,7 @@ public class FavoriteController {
     }
 
     @GetMapping("/users/me/favorites")
-    ApiResponse<PagedItems<FavoriteDtos.FavoriteItem>> list(
+    ApiResponse<PageResponse<FavoriteDtos.FavoriteItem>> list(
             @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
         return ApiResponse.of(service.list(cursor, limit));

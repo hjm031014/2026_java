@@ -1,7 +1,7 @@
 package com.nsu.team.chat;
 
 import com.nsu.team.communication.dto.PublicUserResponse;
-import com.nsu.team.communication.dto.PageInfo;
+import com.nsu.team.common.response.PageInfo;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;

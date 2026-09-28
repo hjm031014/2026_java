@@ -4,13 +4,15 @@ import com.nsu.team.chat.*;
 import com.nsu.team.comment.CommentDtos;
 import com.nsu.team.comment.CommentRepository;
 import com.nsu.team.comment.CommentService;
-import com.nsu.team.common.ApiException;
+import com.nsu.team.common.exception.BusinessException;
+import com.nsu.team.common.exception.ErrorCode;
 import com.nsu.team.favorite.FavoriteRepository;
 import com.nsu.team.favorite.FavoriteService;
 import com.nsu.team.post.SalePost;
 import com.nsu.team.post.SalePostRepository;
-import com.nsu.team.user.UserAccount;
-import com.nsu.team.user.UserAccountRepository;
+import com.nsu.team.domain.user.User;
+import com.nsu.team.domain.user.UserRepository;
+import com.nsu.team.domain.user.UserStatus;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,7 +37,7 @@ class CommunicationIntegrationTest {
     @Autowired CommentService commentService;
     @Autowired FavoriteService favoriteService;
     @Autowired ChatService chatService;
-    @Autowired UserAccountRepository users;
+    @Autowired UserRepository users;
     @Autowired SalePostRepository posts;
     @Autowired CommentRepository comments;
     @Autowired FavoriteRepository favorites;
@@ -43,18 +45,27 @@ class CommunicationIntegrationTest {
     @Autowired ChatMessageRepository messages;
     @Autowired EntityManager entityManager;
 
-    UserAccount seller;
-    UserAccount buyer;
-    UserAccount outsider;
+    User seller;
+    User buyer;
+    User outsider;
     SalePost post;
 
     @BeforeEach
     void setUp() {
-        seller = users.save(new UserAccount("seller@example.com", "hash", "seller"));
-        buyer = users.save(new UserAccount("buyer@example.com", "hash", "buyer"));
-        outsider = users.save(new UserAccount("outsider@example.com", "hash", "outsider"));
+        seller = users.save(newUser("seller@example.com", "seller"));
+        buyer = users.save(newUser("buyer@example.com", "buyer"));
+        outsider = users.save(newUser("outsider@example.com", "outsider"));
         post = posts.save(new SalePost(seller, null, null, "책 판매", "깨끗합니다", BigDecimal.valueOf(12000)));
         entityManager.flush();
+    }
+
+    private static User newUser(String email, String nickname) {
+        return User.builder()
+                .email(email)
+                .passwordHash("hash")
+                .nickname(nickname)
+                .status(UserStatus.ACTIVE)
+                .build();
     }
 
     @AfterEach
@@ -74,9 +85,9 @@ class CommunicationIntegrationTest {
 
         authenticate(seller);
         assertThatThrownBy(() -> commentService.delete(Long.valueOf(created.id())))
-                .isInstanceOf(ApiException.class)
-                .extracting(exception -> ((ApiException) exception).code())
-                .isEqualTo("FORBIDDEN");
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).getErrorCode())
+                .isEqualTo(ErrorCode.FORBIDDEN);
 
         authenticate(buyer);
         commentService.delete(Long.valueOf(created.id()));
@@ -144,27 +155,27 @@ class CommunicationIntegrationTest {
 
         assertThatThrownBy(() -> chatService.sendMessage(
                 Long.valueOf(firstRoom.value().id()), new ChatDtos.SendMessageRequest(clientId, "다른 내용")))
-                .isInstanceOf(ApiException.class)
-                .extracting(exception -> ((ApiException) exception).code())
-                .isEqualTo("IDEMPOTENCY_CONFLICT");
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).getErrorCode())
+                .isEqualTo(ErrorCode.IDEMPOTENCY_CONFLICT);
     }
 
     @Test
     void onlyParticipantsCanReadRoomAndSellerCannotOpenOwnRoom() {
         authenticate(seller);
         assertThatThrownBy(() -> chatService.createRoom(new ChatDtos.CreateRoomRequest(post.getId())))
-                .isInstanceOf(ApiException.class)
-                .extracting(exception -> ((ApiException) exception).code())
-                .isEqualTo("FORBIDDEN");
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).getErrorCode())
+                .isEqualTo(ErrorCode.FORBIDDEN);
 
         authenticate(buyer);
         var room = chatService.createRoom(new ChatDtos.CreateRoomRequest(post.getId()));
 
         authenticate(outsider);
         assertThatThrownBy(() -> chatService.listMessages(Long.valueOf(room.value().id()), null, null, 20))
-                .isInstanceOf(ApiException.class)
-                .extracting(exception -> ((ApiException) exception).code())
-                .isEqualTo("RESOURCE_NOT_FOUND");
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).getErrorCode())
+                .isEqualTo(ErrorCode.RESOURCE_NOT_FOUND);
     }
 
     @Test
@@ -178,7 +189,7 @@ class CommunicationIntegrationTest {
         assertThat(data.hasMore()).isFalse();
     }
 
-    private void authenticate(UserAccount user) {
+    private void authenticate(User user) {
         var authentication = new UsernamePasswordAuthenticationToken(
                 user.getEmail(), "n/a", List.of(new SimpleGrantedAuthority("ROLE_USER")));
         SecurityContextHolder.getContext().setAuthentication(authentication);

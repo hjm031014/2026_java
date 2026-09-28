@@ -1,7 +1,7 @@
 package com.nsu.team.favorite;
 
 import com.nsu.team.post.SalePost;
-import com.nsu.team.user.UserAccount;
+import com.nsu.team.domain.user.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -18,14 +18,14 @@ public class Favorite {
     private FavoriteId id;
     @MapsId("userId") @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
-    private UserAccount user;
+    private User user;
     @MapsId("postId") @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "post_id", nullable = false)
     private SalePost post;
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    public Favorite(UserAccount user, SalePost post) {
+    public Favorite(User user, SalePost post) {
         this.id = new FavoriteId(user.getId(), post.getId());
         this.user = user;
         this.post = post;

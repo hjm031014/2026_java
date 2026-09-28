@@ -1,7 +1,7 @@
 package com.nsu.team.chat;
 
-import com.nsu.team.common.ApiResponse;
-import com.nsu.team.communication.dto.PagedItems;
+import com.nsu.team.common.response.ApiResponse;
+import com.nsu.team.common.response.PageResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -31,7 +31,7 @@ public class ChatController {
     }
 
     @GetMapping
-    ApiResponse<PagedItems<ChatDtos.RoomResponse>> listRooms(
+    ApiResponse<PageResponse<ChatDtos.RoomResponse>> listRooms(
             @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
         return ApiResponse.of(service.listRooms(cursor, limit));

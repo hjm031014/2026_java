@@ -49,8 +49,9 @@ public class SecurityConfig {
 						.accessDeniedHandler(restAccessDeniedHandler))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/api/v1/auth/**").permitAll()
+						.requestMatchers(HttpMethod.GET, "/api/v1/posts", "/api/v1/posts/*").permitAll()
+						.requestMatchers(HttpMethod.POST, "/api/v1/posts/*/views").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/v1/posts/*/comments").permitAll()
-						// TODO(B): 공개 GET API(판매글 목록/상세/검색, 카테고리, 거래 장소 등) permitAll 추가
 						.anyRequest().authenticated())
 				.addFilterBefore(csrfProtectionFilter, UsernamePasswordAuthenticationFilter.class)
 				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

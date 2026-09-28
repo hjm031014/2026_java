@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Map;
 
 /**
@@ -48,11 +50,12 @@ public class ImageService {
 		Integer height = toInteger(uploadResult.get("height"));
 
 		User uploader = userRepository.getReferenceById(uploaderId);
+		Long size = toLong(uploadResult.get("bytes"));
 		PostImage image = PostImage.builder()
 				.uploader(uploader)
 				.imageUrl(url)
 				.mimeType(mimeType)
-				.sizeBytes(file.getSize())
+				.sizeBytes(size == null ? file.getSize() : size)
 				.width(width)
 				.height(height)
 				.build();
@@ -63,7 +66,7 @@ public class ImageService {
 
 	@Transactional
 	public void deleteUnattached(Long imageId, Long requesterId) {
-		PostImage image = postImageRepository.findById(imageId)
+		PostImage image = postImageRepository.findByIdForUpdate(imageId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND));
 
 		if (!image.getUploader().getId().equals(requesterId)) {
@@ -83,7 +86,35 @@ public class ImageService {
 		if (file.getSize() > MAX_SIZE_BYTES) {
 			throw new BusinessException(ErrorCode.PAYLOAD_TOO_LARGE);
 		}
-		return ImageMimeType.fromContentType(file.getContentType());
+		ImageMimeType declared = ImageMimeType.fromContentType(file.getContentType());
+		ImageMimeType detected = detectSignature(file);
+		if (declared != detected) {
+			throw new BusinessException(ErrorCode.UNSUPPORTED_MEDIA_TYPE);
+		}
+		return detected;
+	}
+
+	private ImageMimeType detectSignature(MultipartFile file) {
+		byte[] header = new byte[12];
+		int length;
+		try (InputStream input = file.getInputStream()) {
+			length = input.read(header);
+		} catch (IOException e) {
+			throw new BusinessException(ErrorCode.UNSUPPORTED_MEDIA_TYPE);
+		}
+		if (length >= 3 && (header[0] & 0xff) == 0xff && (header[1] & 0xff) == 0xd8
+				&& (header[2] & 0xff) == 0xff) {
+			return ImageMimeType.JPEG;
+		}
+		byte[] png = {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a};
+		if (length >= 8 && Arrays.equals(Arrays.copyOf(header, 8), png)) {
+			return ImageMimeType.PNG;
+		}
+		if (length >= 12 && header[0] == 'R' && header[1] == 'I' && header[2] == 'F' && header[3] == 'F'
+				&& header[8] == 'W' && header[9] == 'E' && header[10] == 'B' && header[11] == 'P') {
+			return ImageMimeType.WEBP;
+		}
+		throw new BusinessException(ErrorCode.UNSUPPORTED_MEDIA_TYPE);
 	}
 
 	private Integer toInteger(Object value) {
@@ -91,5 +122,9 @@ public class ImageService {
 			return number.intValue();
 		}
 		return null;
+	}
+
+	private Long toLong(Object value) {
+		return value instanceof Number number ? number.longValue() : null;
 	}
 }

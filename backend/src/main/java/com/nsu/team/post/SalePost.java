@@ -56,6 +56,27 @@ public class SalePost {
 
     public boolean isDeleted() { return status == Status.DELETED; }
 
+    public void update(String title, String description, BigDecimal price,
+                       Category category, MeetupLocation meetupLocation) {
+        this.title = title;
+        this.description = description;
+        this.price = price;
+        this.category = category;
+        this.meetupLocation = meetupLocation;
+    }
+
+    public void changeStatus(Status status) {
+        this.status = status;
+    }
+
+    public void delete() {
+        this.status = Status.DELETED;
+    }
+
+    public void incrementViewCount() {
+        this.viewCount++;
+    }
+
     @PrePersist void created() {
         Instant now = Instant.now();
         createdAt = now;

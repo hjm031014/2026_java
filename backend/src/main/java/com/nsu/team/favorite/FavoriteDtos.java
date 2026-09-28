@@ -20,7 +20,8 @@ public final class FavoriteDtos {
     public record TradePlaceResponse(String id, String name, String description, int sortOrder) {
         static TradePlaceResponse from(MeetupLocation location) {
             return location == null ? null : new TradePlaceResponse(
-                    location.getId().toString(), location.getName(), location.getDescription(), 0);
+                    location.getId().toString(), location.getName(), location.getDescription(),
+                    location.getDisplayOrder());
         }
     }
 

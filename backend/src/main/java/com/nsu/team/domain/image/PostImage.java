@@ -2,6 +2,7 @@ package com.nsu.team.domain.image;
 
 import com.nsu.team.common.entity.BaseTimeEntity;
 import com.nsu.team.domain.user.User;
+import com.nsu.team.post.SalePost;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -38,8 +39,9 @@ public class PostImage extends BaseTimeEntity {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@Column(name = "post_id")
-	private Long postId;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "post_id")
+	private SalePost post;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "uploader_id", nullable = false)
@@ -81,6 +83,19 @@ public class PostImage extends BaseTimeEntity {
 	}
 
 	public boolean isAttached() {
-		return postId != null;
+		return post != null;
+	}
+
+	public void attachTo(SalePost post, int displayOrder) {
+		this.post = post;
+		this.displayOrder = displayOrder;
+		this.attachedAt = Instant.now();
+		this.expiresAt = null;
+	}
+
+	public void detach() {
+		this.post = null;
+		this.displayOrder = 0;
+		this.attachedAt = null;
 	}
 }

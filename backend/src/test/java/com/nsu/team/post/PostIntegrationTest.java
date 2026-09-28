@@ -1,6 +1,7 @@
 package com.nsu.team.post;
 
 import com.cloudinary.Cloudinary;
+import com.cloudinary.Uploader;
 import com.nsu.team.common.exception.BusinessException;
 import com.nsu.team.common.exception.ErrorCode;
 import com.nsu.team.domain.image.ImageMimeType;
@@ -20,9 +21,15 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest
 @Transactional
@@ -34,6 +41,7 @@ class PostIntegrationTest {
     @Autowired CategoryRepository categoryRepository;
     @Autowired MeetupLocationRepository locationRepository;
     @Autowired PostImageRepository imageRepository;
+	@Autowired PostViewEventRepository viewEventRepository;
     @Autowired EntityManager entityManager;
 
     @MockitoBean Cloudinary cloudinary;
@@ -120,6 +128,17 @@ class PostIntegrationTest {
         assertThat(postService.recordView(postId, buyer.getId(), "ignored").counted()).isTrue();
         assertThat(postService.recordView(postId, buyer.getId(), "ignored").counted()).isFalse();
         assertThat(postService.detail(postId, null).viewCount()).isEqualTo(2);
+
+		var events = viewEventRepository.findAll();
+		assertThat(events).hasSize(2);
+		assertThat(events).allSatisfy(event -> {
+			assertThat(event.getViewerKeyHash()).matches("[0-9a-f]{64}");
+			assertThat(event.getFirstViewedAt()).isNotNull();
+			assertThat(event.getLastCountedAt()).isNotNull();
+			assertThat(event.getViewerKey()).doesNotContain("127.0.0.1");
+		});
+		assertThat(events).extracting(PostViewEvent::getViewerUserId)
+				.containsExactlyInAnyOrder(null, buyer.getId());
     }
 
     @Test
@@ -149,6 +168,32 @@ class PostIntegrationTest {
 
         assertError(() -> imageService.upload(spoofed, seller.getId()), ErrorCode.UNSUPPORTED_MEDIA_TYPE);
         assertError(() -> imageService.upload(oversized, seller.getId()), ErrorCode.PAYLOAD_TOO_LARGE);
+    }
+
+    @Test
+    void imageUploadStoresCloudinaryMetadataAndDeleteRemovesRemoteAsset() throws Exception {
+        Uploader uploader = mock(Uploader.class);
+        when(cloudinary.uploader()).thenReturn(uploader);
+        when(uploader.upload(any(byte[].class), any(Map.class))).thenReturn(Map.of(
+                "secure_url", "https://res.cloudinary.com/demo/image/upload/sample.png",
+                "public_id", "campus-marketplace/sample",
+                "bytes", 8,
+                "width", 1,
+                "height", 1));
+
+        byte[] pngHeader = {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a};
+        MockMultipartFile file = new MockMultipartFile("file", "sample.png", "image/png", pngHeader);
+
+        var uploaded = imageService.upload(file, seller.getId());
+        PostImage stored = imageRepository.findById(Long.valueOf(uploaded.id())).orElseThrow();
+
+        assertThat(uploaded.mimeType()).isEqualTo("image/png");
+        assertThat(stored.getCloudinaryPublicId()).isEqualTo("campus-marketplace/sample");
+
+        imageService.deleteUnattached(stored.getId(), seller.getId());
+
+        verify(uploader).destroy(eq("campus-marketplace/sample"), any(Map.class));
+        assertThat(imageRepository.findById(stored.getId())).isEmpty();
     }
 
     private PostDtos.Detail create(String title, long price, List<Long> imageIds) {

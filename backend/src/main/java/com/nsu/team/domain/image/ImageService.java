@@ -19,7 +19,7 @@ import java.util.Arrays;
 import java.util.Map;
 
 /**
- * 이미지 업로드/삭제. 실제 파일은 Cloudinary 에 저장하고, 반환된 URL만 DB(post_images)에 저장합니다.
+ * 이미지 업로드/삭제. 실제 파일은 Cloudinary에 저장하고 URL과 삭제용 public ID를 DB에 저장합니다.
  * (API.md "이미지 저장" 규칙)
  */
 @Slf4j
@@ -45,23 +45,28 @@ public class ImageService {
 			throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "이미지 업로드에 실패했습니다.");
 		}
 
-		String url = String.valueOf(uploadResult.get("secure_url"));
-		Integer width = toInteger(uploadResult.get("width"));
-		Integer height = toInteger(uploadResult.get("height"));
-
-		User uploader = userRepository.getReferenceById(uploaderId);
-		Long size = toLong(uploadResult.get("bytes"));
-		PostImage image = PostImage.builder()
-				.uploader(uploader)
-				.imageUrl(url)
-				.mimeType(mimeType)
-				.sizeBytes(size == null ? file.getSize() : size)
-				.width(width)
-				.height(height)
-				.build();
-		postImageRepository.save(image);
-
-		return ImageResponse.from(image);
+		String publicId = requiredString(uploadResult, "public_id");
+		try {
+			String url = requiredString(uploadResult, "secure_url");
+			Integer width = toInteger(uploadResult.get("width"));
+			Integer height = toInteger(uploadResult.get("height"));
+			Long size = toLong(uploadResult.get("bytes"));
+			User uploader = userRepository.getReferenceById(uploaderId);
+			PostImage image = PostImage.builder()
+					.uploader(uploader)
+					.imageUrl(url)
+					.cloudinaryPublicId(publicId)
+					.mimeType(mimeType)
+					.sizeBytes(size == null ? file.getSize() : size)
+					.width(width)
+					.height(height)
+					.build();
+			postImageRepository.saveAndFlush(image);
+			return ImageResponse.from(image);
+		} catch (RuntimeException e) {
+			deleteUploadedAssetQuietly(publicId);
+			throw e;
+		}
 	}
 
 	@Transactional
@@ -76,7 +81,28 @@ public class ImageService {
 			throw new BusinessException(ErrorCode.IMAGE_IN_USE);
 		}
 
+		deleteCloudinaryAsset(image.getCloudinaryPublicId());
 		postImageRepository.delete(image);
+	}
+
+	private void deleteCloudinaryAsset(String publicId) {
+		if (publicId == null || publicId.isBlank()) {
+			return;
+		}
+		try {
+			cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+		} catch (IOException e) {
+			log.error("Cloudinary 이미지 삭제 실패: publicId={}", publicId, e);
+			throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "이미지 삭제에 실패했습니다.");
+		}
+	}
+
+	private void deleteUploadedAssetQuietly(String publicId) {
+		try {
+			deleteCloudinaryAsset(publicId);
+		} catch (BusinessException cleanupFailure) {
+			log.error("DB 저장 실패 후 Cloudinary 보상 삭제에도 실패했습니다: publicId={}", publicId, cleanupFailure);
+		}
 	}
 
 	private ImageMimeType validate(MultipartFile file) {
@@ -126,5 +152,13 @@ public class ImageService {
 
 	private Long toLong(Object value) {
 		return value instanceof Number number ? number.longValue() : null;
+	}
+
+	private String requiredString(Map<?, ?> values, String key) {
+		Object value = values.get(key);
+		if (value == null || value.toString().isBlank()) {
+			throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "이미지 저장소 응답이 올바르지 않습니다.");
+		}
+		return value.toString();
 	}
 }

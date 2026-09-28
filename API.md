@@ -10,7 +10,7 @@
 - **액세스 토큰:** JWT, 15분. 메모리에 보관하고 `Authorization: Bearer <token>`으로 전송
 - **리프레시 토큰:** HttpOnly 쿠키, 7일. 갱신 시 교체하고 로그아웃 시 현재 토큰 계열 폐기
 - **CSRF:** 일반 Bearer API에는 불필요. 회원가입·로그인·갱신·로그아웃·조회 이벤트에는 `X-CSRF-Token` 사용
-- 응답: `{ "data": ... }` · 오류: `{ "error": { "code": "...", "message": "..." } }` · `204`는 본문 없음
+- 응답: `{ "data": ... }` · 오류: `{ "error": { "code", "message", "details", "requestId" } }` · `204`는 본문 없음
 - 목록: `data.items` + `data.page` 커서 페이지네이션. `limit` 기본 20, 최대 100. 카테고리·장소는 `data.items`만 반환
 - 글 변경은 작성자, 댓글 삭제는 댓글 작성자, 채팅은 참여자만 가능
 
@@ -22,6 +22,7 @@
 
 | 메서드 | 경로 | 기능 | 권한 | 성공 | 반환 결과 (`data`) |
 |---|---|---|---|---|---|
+| GET | /test | 서버 상태 확인 | 공개 | 200 | `{ status: "ok", date: string, time: string, timezone: "Asia/Seoul" }` |
 | GET | /auth/csrf | CSRF 토큰 발급 | 공개 | 200 | `{ csrfToken: string }` |
 | POST | /auth/signup | 회원가입 | 공개 | 201 | `MyUser` |
 | POST | /auth/login | 로그인 | 공개 | 200 | `{ user: MyUser, accessToken: string, tokenType: "Bearer", expiresIn: 900 }` + 리프레시 쿠키 |
@@ -52,7 +53,7 @@
 
 ## 응답 데이터 정의
 
-`string`은 문자열, `integer`는 정수, `boolean`은 참/거짓, `[]`는 배열입니다. `?`는 `null`을 허용한다는 뜻입니다. ID는 UUID 문자열이고 시간은 UTC ISO 8601 문자열입니다.
+`string`은 문자열, `integer`는 정수, `boolean`은 참/거짓, `[]`는 배열입니다. `?`는 `null`을 허용한다는 뜻입니다. DB 식별자는 10진수 문자열이고 `clientMessageId`는 UUID 문자열입니다. 시간은 UTC ISO 8601 문자열입니다.
 
 | 이름 | 반환 필드 |
 |---|---|
@@ -61,7 +62,7 @@
 | `MyUser` | `id: string`, `email: string`, `nickname: string`, `createdAt: string` |
 | `Category` | `id: string`, `name: string`, `sortOrder: integer` |
 | `TradePlace` | `id: string`, `name: string`, `description: string`, `sortOrder: integer` |
-| `Image` | `id: string`, `url: string`, `mimeType: string`, `size: integer`(바이트), `width: integer`, `height: integer` |
+| `Image` | `id: string`, `url: string`, `mimeType: "image/jpeg" | "image/png" | "image/webp"`, `size: integer`(바이트), `width: integer`, `height: integer` |
 | `PostSummary` | `id: string`, `title: string`, `price: integer`, `status: string`, `thumbnailUrl: string?`, `category: Category`, `tradePlace: TradePlace`, `seller: PublicUser`, `viewCount: integer`, `favoriteCount: integer`, `isFavorited: boolean`, `createdAt: string` |
 | `PostDetail` | `PostSummary`의 모든 필드 + `description: string`, `images: Image[]`, `version: integer`, `updatedAt: string` |
 | `Comment` | `id: string`, `postId: string`, `author: PublicUser`, `content: string`, `createdAt: string` |
@@ -157,12 +158,13 @@
 
 - **상태:** `SELLING` ↔ `RESERVED`, 두 상태에서 `SOLD`로 변경 가능. 거래완료 후 되돌리기·글 수정 불가
 - **수정 충돌:** 최신 `version`으로 수정·상태 변경·삭제. 충돌하면 `409`
-- **조회수:** 상세 GET과 별도로 조회 이벤트 호출. 회원은 사용자 ID, 비회원은 IP 기준으로 글당 24시간에 한 번 집계, 작성자 제외
+- **조회수:** 상세 GET과 별도로 조회 이벤트 호출. 회원은 사용자 ID, 비회원은 IP 기준으로 글당 24시간에 한 번 집계하고 작성자는 제외. 중복 판정 키는 SHA-256으로 저장하며 원본 IP는 저장하지 않음
 - **이미지:** JPEG·PNG·WebP, 파일당 최대 10MiB, 글당 최대 10개. 본인 이미지로만 등록
-- **이미지 저장:** 업로드된 파일은 Cloudinary에 저장하고, 반환된 URL만 DB의 `Image` 테이블에 저장
-- **이미지 정리:** 글 수정으로 `imageIds`에서 빠진 이미지는 자동으로 "미연결" 상태가 되며 삭제되지 않음(사용자가 직접 `DELETE /images/{imageId}` 필요). 글 삭제 시 첨부 이미지는 유지(고아 이미지 정리는 별도 배치로 처리)
+- **이미지 저장:** 업로드된 파일은 Cloudinary에 저장하고, 반환된 보안 URL과 삭제용 public ID를 DB에 저장. public ID는 API 응답에 노출하지 않음
+- **이미지 정리:** 글 수정으로 `imageIds`에서 빠진 이미지는 자동으로 "미연결" 상태가 되며 삭제되지 않음. 소유자가 `DELETE /images/{imageId}`를 호출하면 DB 기록과 Cloudinary 원본을 함께 삭제. 글 삭제 시 첨부 이미지는 유지(고아 이미지 정리는 별도 배치로 처리)
 - **찜:** 이미 찜한 글에 `PUT`, 찜 안 한 글에 `DELETE` 호출 시 상태 변화 없이 `204` (멱등)
 - **채팅:** 판매글별 구매자당 방 하나, REST 폴링 사용. 메시지 재전송은 중복 저장 방지. 작성자 본인 글에는 채팅방 개설 불가 (`403 FORBIDDEN`)
 - **삭제:** 삭제 글은 목록·상세에서 제외하고 기존 참여자의 채팅은 유지
 
-> 기존 백엔드 설계를 요약한 구현 전 명세입니다. 프론트는 이 API 경로와 필드에 맞춰 연동합니다.
+> 현재 백엔드 구현과 프론트 연동 계약을 함께 관리하는 명세입니다. 공개 API를 변경할 때 코드와 이 문서를 함께 수정합니다.
+> 서버 상태 확인은 `/api/v1/test` 외에 루트 경로 `/test`도 같은 응답을 제공합니다.

@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 @Getter
 @Entity
@@ -31,5 +32,5 @@ public class Favorite {
         this.post = post;
     }
 
-    @PrePersist void created() { createdAt = Instant.now(); }
+    @PrePersist void created() { createdAt = Instant.now().truncatedTo(ChronoUnit.MICROS); }
 }

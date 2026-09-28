@@ -24,10 +24,7 @@ import java.time.Instant;
 /**
  * ERD POST_IMAGES 테이블.
  *
- * <p>post_id 는 SALE_POSTS(B 파트에서 구현)를 참조하지만, 아직 Post 엔티티가 없어
- * 지금은 일반 컬럼(nullable Long)으로만 선언했습니다. B가 Post 엔티티를 추가하면
- * {@code @ManyToOne} 연관관계와 DB FK 제약으로 교체해주세요. post_id 가 null 이면
- * "임시 업로드(글에 아직 첨부되지 않음)" 상태를 의미합니다.
+ * <p>post_id 가 null 이면 임시 업로드, 값이 있으면 판매글에 첨부된 상태입니다.
  */
 @Entity
 @Table(name = "post_images")

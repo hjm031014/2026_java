@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 @Getter
 @Entity
@@ -78,9 +79,9 @@ public class SalePost {
     }
 
     @PrePersist void created() {
-        Instant now = Instant.now();
+        Instant now = Instant.now().truncatedTo(ChronoUnit.MICROS);
         createdAt = now;
         updatedAt = now;
     }
-    @PreUpdate void updated() { updatedAt = Instant.now(); }
+    @PreUpdate void updated() { updatedAt = Instant.now().truncatedTo(ChronoUnit.MICROS); }
 }

@@ -3,13 +3,13 @@ package com.nsu.team.post;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /** 카테고리·거래 장소 기본 데이터를 없는 항목만 채워 넣는다(멱등). */
 @Component
-@Profile("!test")
+@ConditionalOnProperty(name = "app.seed.reference-data", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 public class ReferenceDataSeeder implements ApplicationRunner {
 

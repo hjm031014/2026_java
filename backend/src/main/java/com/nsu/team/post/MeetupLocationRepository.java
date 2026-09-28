@@ -6,4 +6,6 @@ import java.util.List;
 
 public interface MeetupLocationRepository extends JpaRepository<MeetupLocation, Long> {
     List<MeetupLocation> findAllByActiveTrueOrderByDisplayOrderAscIdAsc();
+
+    boolean existsByName(String name);
 }

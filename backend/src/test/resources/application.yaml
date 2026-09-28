@@ -11,6 +11,8 @@ spring:
     show-sql: false
 
 app:
+  seed:
+    reference-data: false
   cors:
     allowed-origins: http://localhost:3000
   jwt:

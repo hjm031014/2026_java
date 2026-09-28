@@ -47,8 +47,8 @@ class PostIntegrationTest {
     void setUp() {
         seller = userRepository.save(user("seller-post@example.com", "판매자"));
         buyer = userRepository.save(user("buyer-post@example.com", "구매자"));
-        category = categoryRepository.save(new Category("도서", 1));
-        location = locationRepository.save(new MeetupLocation("정문", "정문 앞", 1));
+        category = categoryRepository.save(new Category("테스트-도서", 1));
+        location = locationRepository.save(new MeetupLocation("테스트-정문", "정문 앞", 1));
         entityManager.flush();
     }
 

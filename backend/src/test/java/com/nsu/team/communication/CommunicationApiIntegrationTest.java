@@ -3,6 +3,13 @@ package com.nsu.team.communication;
 import com.nsu.team.domain.user.User;
 import com.nsu.team.domain.user.UserRepository;
 import com.nsu.team.domain.user.UserStatus;
+import com.nsu.team.domain.image.ImageMimeType;
+import com.nsu.team.domain.image.PostImage;
+import com.nsu.team.domain.image.PostImageRepository;
+import com.nsu.team.post.Category;
+import com.nsu.team.post.CategoryRepository;
+import com.nsu.team.post.MeetupLocation;
+import com.nsu.team.post.MeetupLocationRepository;
 import com.nsu.team.post.SalePost;
 import com.nsu.team.post.SalePostRepository;
 import com.nsu.team.security.jwt.JwtTokenProvider;
@@ -38,6 +45,15 @@ class CommunicationApiIntegrationTest {
 	private SalePostRepository salePostRepository;
 
 	@Autowired
+	private CategoryRepository categoryRepository;
+
+	@Autowired
+	private MeetupLocationRepository meetupLocationRepository;
+
+	@Autowired
+	private PostImageRepository postImageRepository;
+
+	@Autowired
 	private JwtTokenProvider jwtTokenProvider;
 
 	private User seller;
@@ -49,8 +65,21 @@ class CommunicationApiIntegrationTest {
 	void setUp() {
 		seller = userRepository.save(newUser("api-seller@example.com", "판매자"));
 		buyer = userRepository.save(newUser("api-buyer@example.com", "구매자"));
+		Category category = categoryRepository.save(new Category("통합 카테고리", 1));
+		MeetupLocation location = meetupLocationRepository.save(
+				new MeetupLocation("통합 장소", "통합 테스트 장소", 1));
 		post = salePostRepository.save(new SalePost(
-				seller, null, null, "HTTP 통합 테스트", "상품 설명", BigDecimal.valueOf(10000)));
+				seller, category, location, "HTTP 통합 테스트", "상품 설명", BigDecimal.valueOf(10000)));
+		PostImage image = PostImage.builder()
+				.uploader(seller)
+				.imageUrl("https://cdn.example/integration.png")
+				.mimeType(ImageMimeType.PNG)
+				.sizeBytes(100L)
+				.width(10)
+				.height(10)
+				.build();
+		image.attachTo(post, 0);
+		postImageRepository.save(image);
 		buyerAccessToken = jwtTokenProvider.generateAccessToken(
 				buyer.getId(), buyer.getEmail(), buyer.getNickname());
 	}
@@ -73,6 +102,9 @@ class CommunicationApiIntegrationTest {
 					.header("Authorization", bearer(buyerAccessToken)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.data.items[0].post.id").value(post.getId().toString()))
+				.andExpect(jsonPath("$.data.items[0].post.thumbnailUrl")
+						.value("https://cdn.example/integration.png"))
+				.andExpect(jsonPath("$.data.items[0].post.category.name").value("통합 카테고리"))
 				.andExpect(jsonPath("$.data.items[0].post.isFavorited").value(true));
 
 		mockMvc.perform(post("/api/v1/chat/rooms")
@@ -81,6 +113,19 @@ class CommunicationApiIntegrationTest {
 					.content("{\"postId\":" + post.getId() + "}"))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.data.otherUser.id").value(seller.getId().toString()));
+	}
+
+	@Test
+	void referenceDataApisArePublicAndContractAligned() throws Exception {
+		mockMvc.perform(get("/api/v1/categories"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.items[0].name").value("통합 카테고리"))
+				.andExpect(jsonPath("$.data.items[0].sortOrder").value(1));
+
+		mockMvc.perform(get("/api/v1/trade-places"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.items[0].name").value("통합 장소"))
+				.andExpect(jsonPath("$.data.items[0].description").value("통합 테스트 장소"));
 	}
 
 	@Test

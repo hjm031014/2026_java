@@ -49,6 +49,7 @@ public class SecurityConfig {
 						.accessDeniedHandler(restAccessDeniedHandler))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/api/v1/auth/**").permitAll()
+						.requestMatchers(HttpMethod.GET, "/api/v1/categories", "/api/v1/trade-places").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/v1/posts", "/api/v1/posts/*").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/v1/posts/*/views").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/v1/posts/*/comments").permitAll()

@@ -6,6 +6,8 @@ import com.nsu.team.common.util.CursorCodec;
 import com.nsu.team.common.util.KeysetPageFactory;
 import com.nsu.team.domain.user.User;
 import com.nsu.team.domain.user.UserRepository;
+import com.nsu.team.domain.image.PostImage;
+import com.nsu.team.domain.image.PostImageRepository;
 import com.nsu.team.post.SalePost;
 import com.nsu.team.post.SalePostRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,7 @@ public class FavoriteService {
 	private final FavoriteRepository favoriteRepository;
 	private final SalePostRepository salePostRepository;
 	private final UserRepository userRepository;
+	private final PostImageRepository postImageRepository;
 	private final KeysetPageFactory keysetPageFactory;
 
 	@Transactional
@@ -51,6 +54,7 @@ public class FavoriteService {
 		List<Favorite> favorites = favoriteRepository.findPage(
 				userId, cursorTime, cursorId, PageRequest.of(0, limit + 1));
 		Map<Long, Long> favoriteCountsByPostId = loadFavoriteCounts(favorites);
+		Map<Long, String> thumbnailsByPostId = loadThumbnails(favorites);
 
 		return keysetPageFactory.create(
 				favorites,
@@ -60,8 +64,19 @@ public class FavoriteService {
 				favorite -> new FavoriteDtos.FavoriteItem(
 						FavoriteDtos.PostSummary.from(
 								favorite.getPost(),
-								favoriteCountsByPostId.getOrDefault(favorite.getPost().getId(), 0L)),
+								favoriteCountsByPostId.getOrDefault(favorite.getPost().getId(), 0L),
+								thumbnailsByPostId.get(favorite.getPost().getId())),
 						favorite.getCreatedAt()));
+	}
+
+	private Map<Long, String> loadThumbnails(List<Favorite> favorites) {
+		List<Long> postIds = favorites.stream().map(favorite -> favorite.getPost().getId()).distinct().toList();
+		if (postIds.isEmpty()) return Map.of();
+		return postImageRepository.findAllByPostIds(postIds).stream()
+				.collect(Collectors.toMap(
+						image -> image.getPost().getId(),
+						PostImage::getImageUrl,
+						(first, ignored) -> first));
 	}
 
 	private Map<Long, Long> loadFavoriteCounts(List<Favorite> favorites) {

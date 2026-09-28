@@ -30,10 +30,10 @@ public final class FavoriteDtos {
             CategoryResponse category, TradePlaceResponse tradePlace, PublicUserResponse seller,
             long viewCount, long favoriteCount, boolean isFavorited, Instant createdAt
     ) {
-        static PostSummary from(SalePost post, long favoriteCount) {
+        static PostSummary from(SalePost post, long favoriteCount, String thumbnailUrl) {
             return new PostSummary(
                     post.getId().toString(), post.getTitle(), post.getPrice().longValueExact(),
-                    post.getStatus().name(), null, CategoryResponse.from(post.getCategory()),
+                    post.getStatus().name(), thumbnailUrl, CategoryResponse.from(post.getCategory()),
                     TradePlaceResponse.from(post.getMeetupLocation()), PublicUserResponse.from(post.getSeller()),
                     post.getViewCount(), favoriteCount, true, post.getCreatedAt());
         }

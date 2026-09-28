@@ -6,8 +6,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Collection;
+import java.util.List;
 
 public interface FavoriteRepository extends JpaRepository<Favorite, FavoriteId> {
     @Query("""
@@ -28,18 +28,13 @@ public interface FavoriteRepository extends JpaRepository<Favorite, FavoriteId> 
 
     long countByIdPostId(Long postId);
 
-    interface PostFavoriteCount {
-        Long getPostId();
-        long getFavoriteCount();
-    }
-
     @Query("""
             select f.post.id as postId, count(f) as favoriteCount
             from Favorite f
             where f.post.id in :postIds
             group by f.post.id
             """)
-    List<PostFavoriteCount> countByPostIds(@Param("postIds") Collection<Long> postIds);
+    List<FavoriteCount> countByPostIds(@Param("postIds") Collection<Long> postIds);
 
     @Query("""
             select f.post.id from Favorite f
@@ -47,11 +42,4 @@ public interface FavoriteRepository extends JpaRepository<Favorite, FavoriteId> 
             """)
     List<Long> findFavoritedPostIds(@Param("userId") Long userId,
                                     @Param("postIds") Collection<Long> postIds);
-    @Query("""
-            select f.id.postId as postId, count(f) as favoriteCount
-            from Favorite f
-            where f.id.postId in :postIds
-            group by f.id.postId
-            """)
-    List<FavoriteCount> countByPostIds(@Param("postIds") List<Long> postIds);
 }

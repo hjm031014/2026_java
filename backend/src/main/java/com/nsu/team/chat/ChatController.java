@@ -1,0 +1,64 @@
+package com.nsu.team.chat;
+
+import com.nsu.team.common.response.ApiResponse;
+import com.nsu.team.common.response.PageResponse;
+import com.nsu.team.security.UserPrincipal;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.net.URI;
+
+@Validated
+@RestController
+@RequestMapping("/api/v1/chat/rooms")
+@RequiredArgsConstructor
+public class ChatController {
+    private final ChatService chatService;
+
+    @PostMapping
+    public ResponseEntity<ApiResponse<ChatDtos.RoomResponse>> createRoom(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody ChatDtos.CreateRoomRequest request) {
+        var result = chatService.createRoom(principal.userId(), request);
+        HttpStatus status = result.created() ? HttpStatus.CREATED : HttpStatus.OK;
+        return ResponseEntity.status(status)
+                .location(URI.create("/api/v1/chat/rooms/" + result.value().id()))
+                .body(ApiResponse.of(result.value()));
+    }
+
+    @GetMapping
+    public ApiResponse<PageResponse<ChatDtos.RoomResponse>> listRooms(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
+        return ApiResponse.of(chatService.listRooms(principal.userId(), cursor, limit));
+    }
+
+    @GetMapping("/{roomId}/messages")
+    public ApiResponse<ChatDtos.MessagePage> listMessages(
+            @PathVariable Long roomId,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) Long afterSequence,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
+        return ApiResponse.of(chatService.listMessages(
+                roomId, principal.userId(), cursor, afterSequence, limit));
+    }
+
+    @PostMapping("/{roomId}/messages")
+    public ResponseEntity<ApiResponse<ChatDtos.MessageResponse>> sendMessage(
+            @PathVariable Long roomId,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody ChatDtos.SendMessageRequest request) {
+        var result = chatService.sendMessage(roomId, principal.userId(), request);
+        HttpStatus status = result.created() ? HttpStatus.CREATED : HttpStatus.OK;
+        return ResponseEntity.status(status).body(ApiResponse.of(result.value()));
+    }
+}

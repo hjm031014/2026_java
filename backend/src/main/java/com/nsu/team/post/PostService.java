@@ -41,6 +41,9 @@ import static com.nsu.team.common.exception.ErrorCode.VERSION_CONFLICT;
 public class PostService {
 
     private static final Duration VIEW_DEDUPLICATION_WINDOW = Duration.ofHours(24);
+    private static final long UNUSED_ID = 0L;
+    private static final Instant UNUSED_TIME = Instant.EPOCH;
+    private static final BigDecimal UNUSED_PRICE = BigDecimal.ZERO;
 
     private final SalePostRepository postRepository;
     private final CategoryRepository categoryRepository;
@@ -70,16 +73,24 @@ public class PostService {
         }
         PostSort sort = PostSort.parse(sortValue);
         PostCursor decoded = decodeCursor(cursor, sort);
-        String normalizedQuery = query == null || query.isBlank() ? null : query.trim();
+        String normalizedQuery = query == null || query.isBlank() ? "" : query.trim();
+        boolean filterCategory = categoryId != null;
+        long boundCategoryId = filterCategory ? categoryId : UNUSED_ID;
+        boolean filterStatus = status != null;
+        SalePost.Status boundStatus = filterStatus ? status : SalePost.Status.SELLING;
+        boolean hasCursor = decoded != null;
         List<SalePost> found = switch (sort) {
-            case LATEST -> postRepository.findLatestPage(normalizedQuery, categoryId, status,
-                    decoded == null ? null : decoded.time(), decoded == null ? null : decoded.id(),
+            case LATEST -> postRepository.findLatestPage(normalizedQuery,
+                    filterCategory, boundCategoryId, filterStatus, boundStatus, hasCursor,
+                    hasCursor ? decoded.time() : UNUSED_TIME, hasCursor ? decoded.id() : UNUSED_ID,
                     PageRequest.of(0, limit + 1));
-            case PRICE_ASC -> postRepository.findPriceAscPage(normalizedQuery, categoryId, status,
-                    decoded == null ? null : decoded.price(), decoded == null ? null : decoded.id(),
+            case PRICE_ASC -> postRepository.findPriceAscPage(normalizedQuery,
+                    filterCategory, boundCategoryId, filterStatus, boundStatus, hasCursor,
+                    hasCursor ? decoded.price() : UNUSED_PRICE, hasCursor ? decoded.id() : UNUSED_ID,
                     PageRequest.of(0, limit + 1));
-            case PRICE_DESC -> postRepository.findPriceDescPage(normalizedQuery, categoryId, status,
-                    decoded == null ? null : decoded.price(), decoded == null ? null : decoded.id(),
+            case PRICE_DESC -> postRepository.findPriceDescPage(normalizedQuery,
+                    filterCategory, boundCategoryId, filterStatus, boundStatus, hasCursor,
+                    hasCursor ? decoded.price() : UNUSED_PRICE, hasCursor ? decoded.id() : UNUSED_ID,
                     PageRequest.of(0, limit + 1));
         };
         boolean hasNext = found.size() > limit;

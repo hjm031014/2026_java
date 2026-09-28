@@ -3,6 +3,7 @@ package com.nsu.team.post;
 import com.nsu.team.domain.user.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import org.hibernate.annotations.OptimisticLock;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -36,12 +37,14 @@ public class SalePost {
     private BigDecimal price;
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 20)
     private Status status = Status.SELLING;
+    @OptimisticLock(excluded = true)
     @Column(name = "view_count", nullable = false)
     private long viewCount;
     @Version
     private long version;
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
+    @OptimisticLock(excluded = true)
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 

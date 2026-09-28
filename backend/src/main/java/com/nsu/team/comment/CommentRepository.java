@@ -14,7 +14,7 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
             select c from Comment c
             join fetch c.author
             where c.post.id = :postId and c.deletedAt is null
-              and (:cursorTime is null or c.createdAt < :cursorTime
+              and (cast(:cursorTime as Instant) is null or c.createdAt < :cursorTime
                    or (c.createdAt = :cursorTime and c.id < :cursorId))
             order by c.createdAt desc, c.id desc
             """)

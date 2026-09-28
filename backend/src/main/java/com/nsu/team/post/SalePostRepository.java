@@ -32,11 +32,11 @@ public interface SalePostRepository extends JpaRepository<SalePost, Long> {
             join fetch p.category
             join fetch p.meetupLocation
             where p.status <> com.nsu.team.post.SalePost.Status.DELETED
-              and (:q is null or lower(p.title) like lower(concat('%', :q, '%'))
-                   or lower(p.description) like lower(concat('%', :q, '%')))
+              and (cast(:q as String) is null or lower(p.title) like lower(concat('%', cast(:q as String), '%'))
+                   or lower(p.description) like lower(concat('%', cast(:q as String), '%')))
               and (:categoryId is null or p.category.id = :categoryId)
               and (:status is null or p.status = :status)
-              and (:cursorTime is null or p.createdAt < :cursorTime
+              and (cast(:cursorTime as Instant) is null or p.createdAt < :cursorTime
                    or (p.createdAt = :cursorTime and p.id < :cursorId))
             order by p.createdAt desc, p.id desc
             """)
@@ -53,11 +53,11 @@ public interface SalePostRepository extends JpaRepository<SalePost, Long> {
             join fetch p.category
             join fetch p.meetupLocation
             where p.status <> com.nsu.team.post.SalePost.Status.DELETED
-              and (:q is null or lower(p.title) like lower(concat('%', :q, '%'))
-                   or lower(p.description) like lower(concat('%', :q, '%')))
+              and (cast(:q as String) is null or lower(p.title) like lower(concat('%', cast(:q as String), '%'))
+                   or lower(p.description) like lower(concat('%', cast(:q as String), '%')))
               and (:categoryId is null or p.category.id = :categoryId)
               and (:status is null or p.status = :status)
-              and (:cursorPrice is null or p.price > :cursorPrice
+              and (cast(:cursorPrice as BigDecimal) is null or p.price > :cursorPrice
                    or (p.price = :cursorPrice and p.id > :cursorId))
             order by p.price asc, p.id asc
             """)
@@ -74,11 +74,11 @@ public interface SalePostRepository extends JpaRepository<SalePost, Long> {
             join fetch p.category
             join fetch p.meetupLocation
             where p.status <> com.nsu.team.post.SalePost.Status.DELETED
-              and (:q is null or lower(p.title) like lower(concat('%', :q, '%'))
-                   or lower(p.description) like lower(concat('%', :q, '%')))
+              and (cast(:q as String) is null or lower(p.title) like lower(concat('%', cast(:q as String), '%'))
+                   or lower(p.description) like lower(concat('%', cast(:q as String), '%')))
               and (:categoryId is null or p.category.id = :categoryId)
               and (:status is null or p.status = :status)
-              and (:cursorPrice is null or p.price < :cursorPrice
+              and (cast(:cursorPrice as BigDecimal) is null or p.price < :cursorPrice
                    or (p.price = :cursorPrice and p.id < :cursorId))
             order by p.price desc, p.id desc
             """)

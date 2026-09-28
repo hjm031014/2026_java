@@ -24,7 +24,7 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     @Query("""
             select m from ChatMessage m join fetch m.sender
             where m.room.id = :roomId
-              and (:cursorTime is null or m.createdAt < :cursorTime
+              and (cast(:cursorTime as Instant) is null or m.createdAt < :cursorTime
                    or (m.createdAt = :cursorTime and m.id < :cursorId))
             order by m.createdAt desc, m.id desc
             """)

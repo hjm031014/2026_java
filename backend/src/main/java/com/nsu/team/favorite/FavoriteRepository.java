@@ -17,7 +17,7 @@ public interface FavoriteRepository extends JpaRepository<Favorite, FavoriteId> 
             left join fetch p.category
             left join fetch p.meetupLocation
             where f.user.id = :userId and p.status <> com.nsu.team.post.SalePost.Status.DELETED
-              and (:cursorTime is null or f.createdAt < :cursorTime
+              and (cast(:cursorTime as Instant) is null or f.createdAt < :cursorTime
                    or (f.createdAt = :cursorTime and p.id < :cursorId))
             order by f.createdAt desc, p.id desc
             """)

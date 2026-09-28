@@ -20,7 +20,7 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
             join fetch r.seller
             join fetch r.buyer
             where (r.seller.id = :userId or r.buyer.id = :userId)
-              and (:cursorTime is null or r.updatedAt < :cursorTime
+              and (cast(:cursorTime as Instant) is null or r.updatedAt < :cursorTime
                    or (r.updatedAt = :cursorTime and r.id < :cursorId))
             order by r.updatedAt desc, r.id desc
             """)

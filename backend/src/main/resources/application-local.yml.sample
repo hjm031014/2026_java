@@ -1,0 +1,19 @@
+# 로컬 개발용 설정 예시.
+# 이 파일을 application-local.yml 로 복사하고 값을 채운 뒤
+# `SPRING_PROFILES_ACTIVE=local` 로 실행하세요. (application-local.yml 은 git에 커밋되지 않습니다)
+
+spring:
+  datasource:
+    url: jdbc:postgresql://<neon-host>/<db-name>?sslmode=require
+    username: <neon-username>
+    password: <neon-password>
+
+app:
+  jwt:
+    secret: local-dev-secret-key-please-make-it-longer-than-32-bytes
+  cookie:
+    secure: false
+    same-site: Lax
+
+cloudinary:
+  url: cloudinary://<api-key>:<api-secret>@<cloud-name>

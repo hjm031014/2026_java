@@ -42,3 +42,5 @@
 
 - [기능 명세서](FEATURES.md): 회원·판매글·거래·소통 기능과 처리 규칙
 - [API 명세서](API.md): 인증 방식, API 목록, 요청 필드 및 처리 규칙
+- [백엔드 파트 분담](BACKEND_TASKS.md): 백엔드 3명의 담당 API 및 협업 시 주의사항
+- [백엔드 프로젝트](backend/README.md): Spring Boot 프로젝트 실행 방법 및 환경변수

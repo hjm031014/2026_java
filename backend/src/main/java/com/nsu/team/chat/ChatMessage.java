@@ -1,6 +1,6 @@
 package com.nsu.team.chat;
 
-import com.nsu.team.user.UserAccount;
+import com.nsu.team.domain.user.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -25,7 +25,7 @@ public class ChatMessage {
     private ChatRoom room;
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "sender_id", nullable = false)
-    private UserAccount sender;
+    private User sender;
     @Column(nullable = false)
     private long sequence;
     @Column(name = "client_message_id", nullable = false, length = 100)
@@ -37,7 +37,7 @@ public class ChatMessage {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    public ChatMessage(ChatRoom room, UserAccount sender, long sequence,
+    public ChatMessage(ChatRoom room, User sender, long sequence,
                        String clientMessageId, String content, Instant createdAt) {
         this.room = room;
         this.sender = sender;

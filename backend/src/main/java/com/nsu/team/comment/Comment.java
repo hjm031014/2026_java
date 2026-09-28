@@ -1,7 +1,7 @@
 package com.nsu.team.comment;
 
 import com.nsu.team.post.SalePost;
-import com.nsu.team.user.UserAccount;
+import com.nsu.team.domain.user.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -21,7 +21,7 @@ public class Comment {
     private SalePost post;
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
-    private UserAccount author;
+    private User author;
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
     @Column(name = "created_at", nullable = false)
@@ -31,7 +31,7 @@ public class Comment {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
-    public Comment(SalePost post, UserAccount author, String content) {
+    public Comment(SalePost post, User author, String content) {
         this.post = post;
         this.author = author;
         this.content = content;

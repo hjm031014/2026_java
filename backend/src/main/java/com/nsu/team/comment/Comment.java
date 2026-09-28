@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 @Getter
 @Entity
@@ -37,12 +38,18 @@ public class Comment {
         this.content = content;
     }
 
-    public void delete() { deletedAt = Instant.now(); }
+    public void delete() { deletedAt = now(); }
+
+    public boolean isWrittenBy(Long userId) {
+        return author.getId().equals(userId);
+    }
 
     @PrePersist void created() {
-        Instant now = Instant.now();
+        Instant now = now();
         createdAt = now;
         updatedAt = now;
     }
-    @PreUpdate void updated() { updatedAt = Instant.now(); }
+    @PreUpdate void updated() { updatedAt = now(); }
+
+    private static Instant now() { return Instant.now().truncatedTo(ChronoUnit.MICROS); }
 }

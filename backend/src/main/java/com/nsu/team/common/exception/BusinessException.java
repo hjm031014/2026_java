@@ -27,4 +27,20 @@ public class BusinessException extends RuntimeException {
 		this.errorCode = errorCode;
 		this.details = details;
 	}
+
+	public static BusinessException notFound() {
+		return new BusinessException(ErrorCode.RESOURCE_NOT_FOUND);
+	}
+
+	public static BusinessException unauthenticated() {
+		return new BusinessException(ErrorCode.UNAUTHENTICATED);
+	}
+
+	public static BusinessException forbidden(String message) {
+		return new BusinessException(ErrorCode.FORBIDDEN, message);
+	}
+
+	public static BusinessException validation(String message) {
+		return new BusinessException(ErrorCode.VALIDATION_ERROR, message);
+	}
 }

@@ -4,6 +4,8 @@ import com.nsu.team.common.exception.BusinessException;
 import com.nsu.team.common.exception.ErrorCode;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 
 /**
@@ -39,5 +41,28 @@ public final class CursorCodec {
 		} catch (NumberFormatException e) {
 			throw new BusinessException(ErrorCode.INVALID_CURSOR);
 		}
+	}
+
+	public static String encode(Instant time, long id) {
+		String raw = time.truncatedTo(ChronoUnit.MICROS) + "|" + id;
+		return encode(raw);
+	}
+
+	public static KeysetCursor decodeKeyset(String cursor) {
+		try {
+			String[] values = decode(cursor).split("\\|", -1);
+			if (values.length != 2) throw new IllegalArgumentException();
+			return new KeysetCursor(Instant.parse(values[0]), Long.parseLong(values[1]));
+		} catch (RuntimeException exception) {
+			if (exception instanceof BusinessException businessException) throw businessException;
+			throw new BusinessException(ErrorCode.INVALID_CURSOR);
+		}
+	}
+
+	public static KeysetCursor decodeKeysetNullable(String cursor) {
+		return cursor == null || cursor.isBlank() ? null : decodeKeyset(cursor);
+	}
+
+	public record KeysetCursor(Instant time, long id) {
 	}
 }

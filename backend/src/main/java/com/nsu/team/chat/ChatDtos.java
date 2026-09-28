@@ -1,6 +1,7 @@
 package com.nsu.team.chat;
 
 import com.nsu.team.communication.dto.PublicUserResponse;
+import com.nsu.team.common.response.PageInfo;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -48,7 +49,15 @@ public final class ChatDtos {
             Instant updatedAt
     ) {}
 
-    public record NewMessages(List<MessageResponse> items, long nextAfterSequence, boolean hasMore) {}
+    public sealed interface MessagePage permits HistoryMessages, NewMessages {}
+
+    public record HistoryMessages(List<MessageResponse> items, PageInfo page) implements MessagePage {}
+
+    public record NewMessages(
+            List<MessageResponse> items,
+            long nextAfterSequence,
+            boolean hasMore
+    ) implements MessagePage {}
 
     public record CreationResult<T>(T value, boolean created) {}
 }

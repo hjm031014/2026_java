@@ -47,4 +47,11 @@ public interface FavoriteRepository extends JpaRepository<Favorite, FavoriteId> 
             """)
     List<Long> findFavoritedPostIds(@Param("userId") Long userId,
                                     @Param("postIds") Collection<Long> postIds);
+    @Query("""
+            select f.id.postId as postId, count(f) as favoriteCount
+            from Favorite f
+            where f.id.postId in :postIds
+            group by f.id.postId
+            """)
+    List<FavoriteCount> countByPostIds(@Param("postIds") List<Long> postIds);
 }

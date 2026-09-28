@@ -1,78 +1,63 @@
 package com.nsu.team.comment;
 
-import com.nsu.team.common.ApiException;
-import com.nsu.team.common.CursorCodec;
-import com.nsu.team.communication.dto.PageInfo;
-import com.nsu.team.communication.dto.PagedItems;
+import com.nsu.team.common.exception.BusinessException;
+import com.nsu.team.common.response.PageResponse;
+import com.nsu.team.common.util.CursorCodec;
+import com.nsu.team.common.util.KeysetPageFactory;
+import com.nsu.team.domain.user.User;
+import com.nsu.team.domain.user.UserRepository;
 import com.nsu.team.post.SalePost;
 import com.nsu.team.post.SalePostRepository;
-import com.nsu.team.user.CurrentUserProvider;
-import com.nsu.team.domain.user.User;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CommentService {
-    private final CommentRepository comments;
-    private final SalePostRepository posts;
-    private final CurrentUserProvider currentUser;
-    private final CursorCodec cursors;
 
-    public CommentService(CommentRepository comments, SalePostRepository posts,
-                          CurrentUserProvider currentUser, CursorCodec cursors) {
-        this.comments = comments;
-        this.posts = posts;
-        this.currentUser = currentUser;
-        this.cursors = cursors;
-    }
+	private final CommentRepository commentRepository;
+	private final SalePostRepository salePostRepository;
+	private final UserRepository userRepository;
+	private final KeysetPageFactory keysetPageFactory;
 
-    public PagedItems<CommentDtos.Response> list(Long postId, String cursor, int limit) {
-        requireVisiblePost(postId);
-        Instant cursorTime = null;
-        Long cursorId = null;
-        if (cursor != null && !cursor.isBlank()) {
-            CursorCodec.Cursor decoded = cursors.decode(cursor);
-            cursorTime = decoded.time();
-            cursorId = decoded.id();
-        }
-        List<Comment> found = new ArrayList<>(comments.findPage(
-                postId, cursorTime, cursorId, PageRequest.of(0, limit + 1)));
-        boolean hasNext = found.size() > limit;
-        if (hasNext) found.remove(found.size() - 1);
-        String next = hasNext && !found.isEmpty()
-                ? cursors.encode(found.get(found.size() - 1).getCreatedAt(), found.get(found.size() - 1).getId())
-                : null;
-        return new PagedItems<>(found.stream().map(CommentDtos.Response::from).toList(), new PageInfo(next, hasNext));
-    }
+	public PageResponse<CommentDtos.Response> list(Long postId, String cursor, int limit) {
+		requireVisiblePost(postId);
+		CursorCodec.KeysetCursor decodedCursor = CursorCodec.decodeKeysetNullable(cursor);
+		Instant cursorTime = decodedCursor == null ? null : decodedCursor.time();
+		Long cursorId = decodedCursor == null ? null : decodedCursor.id();
+		List<Comment> comments = commentRepository.findPage(
+				postId, cursorTime, cursorId, PageRequest.of(0, limit + 1));
 
-    @Transactional
-    public CommentDtos.Response create(Long postId, CommentDtos.CreateRequest request) {
-        SalePost post = requireVisiblePost(postId);
-        User author = currentUser.require();
-        Comment saved = comments.save(new Comment(post, author, request.content().trim()));
-        return CommentDtos.Response.from(saved);
-    }
+		return keysetPageFactory.create(
+				comments, limit, Comment::getCreatedAt, Comment::getId, CommentDtos.Response::from);
+	}
 
-    @Transactional
-    public void delete(Long commentId) {
-        User user = currentUser.require();
-        Comment comment = comments.findActiveById(commentId).orElseThrow(ApiException::notFound);
-        if (!comment.getAuthor().getId().equals(user.getId())) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "댓글 작성자만 삭제할 수 있습니다.");
-        }
-        comment.delete();
-    }
+	@Transactional
+	public CommentDtos.Response create(Long postId, Long authorId, CommentDtos.CreateRequest request) {
+		SalePost post = requireVisiblePost(postId);
+		User author = userRepository.findById(authorId).orElseThrow(BusinessException::unauthenticated);
+		Comment comment = commentRepository.save(new Comment(post, author, request.content().trim()));
+		return CommentDtos.Response.from(comment);
+	}
 
-    private SalePost requireVisiblePost(Long postId) {
-        SalePost post = posts.findById(postId).orElseThrow(ApiException::notFound);
-        if (post.isDeleted()) throw ApiException.notFound();
-        return post;
-    }
+	@Transactional
+	public void delete(Long commentId, Long requesterId) {
+		Comment comment = commentRepository.findActiveById(commentId).orElseThrow(BusinessException::notFound);
+		if (!comment.isWrittenBy(requesterId)) {
+			throw BusinessException.forbidden("댓글 작성자만 삭제할 수 있습니다.");
+		}
+		comment.delete();
+	}
+
+	private SalePost requireVisiblePost(Long postId) {
+		SalePost post = salePostRepository.findById(postId).orElseThrow(BusinessException::notFound);
+		if (post.isDeleted()) throw BusinessException.notFound();
+		return post;
+	}
 }

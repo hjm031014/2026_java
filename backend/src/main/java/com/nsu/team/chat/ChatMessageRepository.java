@@ -17,6 +17,12 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
 
     @Query("""
             select m from ChatMessage m join fetch m.sender
+            where m.room.id in :roomIds and m.sequence = m.room.lastSequence
+            """)
+    List<ChatMessage> findLastByRoomIds(@Param("roomIds") List<Long> roomIds);
+
+    @Query("""
+            select m from ChatMessage m join fetch m.sender
             where m.room.id = :roomId
               and (:cursorTime is null or m.createdAt < :cursorTime
                    or (m.createdAt = :cursorTime and m.id < :cursorId))

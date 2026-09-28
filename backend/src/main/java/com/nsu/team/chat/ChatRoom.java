@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 @Getter
 @Entity
@@ -52,8 +53,16 @@ public class ChatRoom {
         return lastSequence;
     }
 
+    public boolean hasParticipant(Long userId) {
+        return seller.getId().equals(userId) || buyer.getId().equals(userId);
+    }
+
+    public User otherParticipant(Long userId) {
+        return seller.getId().equals(userId) ? buyer : seller;
+    }
+
     @PrePersist void created() {
-        Instant now = Instant.now();
+        Instant now = Instant.now().truncatedTo(ChronoUnit.MICROS);
         createdAt = now;
         updatedAt = now;
     }

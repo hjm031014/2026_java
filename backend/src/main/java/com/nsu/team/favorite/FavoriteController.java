@@ -1,37 +1,44 @@
 package com.nsu.team.favorite;
 
-import com.nsu.team.common.ApiResponse;
-import com.nsu.team.communication.dto.PagedItems;
+import com.nsu.team.common.response.ApiResponse;
+import com.nsu.team.common.response.PageResponse;
+import com.nsu.team.security.UserPrincipal;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @Validated
 @RestController
 @RequestMapping("/api/v1")
+@RequiredArgsConstructor
 public class FavoriteController {
-    private final FavoriteService service;
-
-    public FavoriteController(FavoriteService service) { this.service = service; }
+    private final FavoriteService favoriteService;
 
     @PutMapping("/posts/{postId}/favorite")
-    ResponseEntity<Void> add(@PathVariable Long postId) {
-        service.add(postId);
+    public ResponseEntity<Void> add(
+            @PathVariable Long postId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        favoriteService.add(postId, principal.userId());
         return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/posts/{postId}/favorite")
-    ResponseEntity<Void> remove(@PathVariable Long postId) {
-        service.remove(postId);
+    public ResponseEntity<Void> remove(
+            @PathVariable Long postId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        favoriteService.remove(postId, principal.userId());
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/users/me/favorites")
-    ApiResponse<PagedItems<FavoriteDtos.FavoriteItem>> list(
+    public ApiResponse<PageResponse<FavoriteDtos.FavoriteItem>> list(
+            @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
-        return ApiResponse.of(service.list(cursor, limit));
+        return ApiResponse.of(favoriteService.list(principal.userId(), cursor, limit));
     }
 }

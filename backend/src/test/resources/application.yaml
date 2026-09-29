@@ -9,6 +9,10 @@ spring:
       ddl-auto: create-drop
     open-in-view: false
     show-sql: false
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 15MB
 
 app:
   seed:
@@ -23,3 +27,8 @@ app:
 
 cloudinary:
   url: ""
+
+zonky:
+  test:
+    database:
+      provider: zonky

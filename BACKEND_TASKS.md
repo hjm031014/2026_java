@@ -20,15 +20,19 @@
 
 - 파트 A·B·C의 `API.md` 공개 API에 대응하는 Controller, Service, Repository가 구현되어 있습니다.
 - `GET /api/v1/posts` 목록과 상세, 카테고리, 거래 장소는 비로그인 사용자에게 공개되어 있습니다.
-- PR #8이 `main`에 병합되어 Neon MIME 값 호환, Cloudinary `secure_url`·`public_id` 저장과 원본 삭제,
-  조회 이벤트 해시 저장, 관련 API 문서 갱신이 반영되었습니다.
-- `GET /api/v1/posts`가 PostgreSQL에서 500을 반환하던 문제는 null 쿼리 파라미터 바인딩을 제거하는 방식으로
-  수정했으며 PR #9에서 검토 중입니다. 병합·재배포 후 `?limit=20`, `?q=&limit=20`, 파라미터 없는 요청을
-  모두 다시 확인해야 합니다.
-- 배포 환경에는 실제 `CLOUDINARY_URL`을 설정해야 이미지 업로드·삭제를 검증할 수 있습니다. API 키와
+- PR #8·#9가 `main`에 병합되어 Neon MIME 값 호환, Cloudinary `secure_url`·`public_id` 저장과 원본 삭제,
+  조회 이벤트 해시 저장, `GET /api/v1/posts`의 null 파라미터 바인딩 문제 수정, 관련 API 문서 갱신이 반영되었습니다.
+- Java 17 환경에서 `backend/gradlew.bat test`를 실행해 전체 스위트(42개 테스트)가 통과하는 것을 확인했습니다.
+- `GET /api/v1/posts`의 PostgreSQL 500 문제는 임베디드 실제 PostgreSQL(H2가 아님, `PostListPostgresCompatibilityTest`)로
+  파라미터 없음/`?limit=20`/`?q=&limit=20`/카테고리·상태 필터/정렬·커서 페이지네이션 조합을 재검증해
+  모두 200을 반환함을 확인했습니다. 테스트에는 `io.zonky.test:embedded-postgres`(Docker 불필요)를 사용합니다.
+- 판매글 CRUD, 소유권·버전 충돌, 판매완료 후 수정·상태복구 금지, 이미지 소유권·중복 첨부 제한,
+  조회수 중복 방지(24시간·작성자 제외) 규칙을 MockMvc 기반 HTTP 통합 테스트(`PostApiHttpIntegrationTest`)로
+  추가 검증했습니다. Cloudinary 호출은 전부 mock 처리했습니다.
+- 배포 환경에는 실제 `CLOUDINARY_URL`을 설정해야 이미지 업로드·삭제를 검증할 수 있습니다. 이 작업 환경에는
+  실제 Cloudinary 자격증명과 외부 PostgreSQL(Neon) 접속 정보가 없어 실제 Cloudinary API·Neon 연동은 코드
+  리뷰와 mock 기반 테스트로만 확인했으며, 배포 환경에서 직접 재확인이 필요합니다. API 키와
   API Secret은 저장소에 커밋하지 않습니다.
-- 현재 작업 환경에는 Java 17이 없어 전체 Gradle 테스트를 실행하지 못했습니다. Java 17 환경에서
-  `backend/gradlew.bat test`를 실행하는 검증이 남아 있습니다.
 - ERD의 `transactions` 테이블을 사용하는 별도 거래 API는 현재 `API.md`에 정의되어 있지 않습니다.
   판매글 거래 상태는 `PATCH /posts/{postId}/status`로 변경합니다.
 

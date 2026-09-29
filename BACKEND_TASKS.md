@@ -16,9 +16,21 @@
 | 페이지네이션 공통 모듈 | 커서 기반 페이지네이션 유틸(`nextCursor`, `hasNext`), `limit` 기본 20/최대 100 검증 |
 | 낙관적 잠금 공통 처리 | `version` 필드 충돌 시 `409 VERSION_CONFLICT` 반환하는 공통 로직 |
 
-> **진행 상황:** `backend/` 에 파트 A(공통 인프라 + 회원·인증·이미지) 스켈레톤이 구현되어 있습니다.
-> B, C 는 이 프로젝트 위에 각자 패키지(`domain/post`, `domain/comment`, `domain/favorite`, `domain/chat` 등)를
-> 추가해 이어서 개발하면 됩니다. 자세한 내용은 [backend/README.md](backend/README.md) 참고.
+### 현재 진행 상황 (2026-09-29)
+
+- 파트 A·B·C의 `API.md` 공개 API에 대응하는 Controller, Service, Repository가 구현되어 있습니다.
+- `GET /api/v1/posts` 목록과 상세, 카테고리, 거래 장소는 비로그인 사용자에게 공개되어 있습니다.
+- PR #8이 `main`에 병합되어 Neon MIME 값 호환, Cloudinary `secure_url`·`public_id` 저장과 원본 삭제,
+  조회 이벤트 해시 저장, 관련 API 문서 갱신이 반영되었습니다.
+- `GET /api/v1/posts`가 PostgreSQL에서 500을 반환하던 문제는 null 쿼리 파라미터 바인딩을 제거하는 방식으로
+  수정했으며 PR #9에서 검토 중입니다. 병합·재배포 후 `?limit=20`, `?q=&limit=20`, 파라미터 없는 요청을
+  모두 다시 확인해야 합니다.
+- 배포 환경에는 실제 `CLOUDINARY_URL`을 설정해야 이미지 업로드·삭제를 검증할 수 있습니다. API 키와
+  API Secret은 저장소에 커밋하지 않습니다.
+- 현재 작업 환경에는 Java 17이 없어 전체 Gradle 테스트를 실행하지 못했습니다. Java 17 환경에서
+  `backend/gradlew.bat test`를 실행하는 검증이 남아 있습니다.
+- ERD의 `transactions` 테이블을 사용하는 별도 거래 API는 현재 `API.md`에 정의되어 있지 않습니다.
+  판매글 거래 상태는 `PATCH /posts/{postId}/status`로 변경합니다.
 
 ## 담당자 A — 회원·인증·이미지
 

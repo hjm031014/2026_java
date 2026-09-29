@@ -160,6 +160,25 @@ class PostIntegrationTest {
     }
 
     @Test
+    void listSupportsEmptyQueryOptionalFiltersAndEverySort() {
+        PostDtos.Detail first = create("첫 글", 3000, List.of());
+        PostDtos.Detail second = create("둘째 글", 1000, List.of());
+        PostDtos.Detail third = create("셋째 글", 2000, List.of());
+
+        var unfiltered = postService.list("", null, null, "latest", null, 20, null);
+        var filtered = postService.list("둘째", category.getId(), SalePost.Status.SELLING,
+                "latest", null, 20, null);
+        var priceAsc = postService.list(null, null, null, "price_asc", null, 20, null);
+        var priceDesc = postService.list(null, null, null, "price_desc", null, 20, null);
+
+        assertThat(unfiltered.items()).extracting(PostDtos.Summary::id)
+                .containsExactlyInAnyOrder(first.id(), second.id(), third.id());
+        assertThat(filtered.items()).extracting(PostDtos.Summary::id).containsExactly(second.id());
+        assertThat(priceAsc.items()).extracting(PostDtos.Summary::price).containsExactly(1000L, 2000L, 3000L);
+        assertThat(priceDesc.items()).extracting(PostDtos.Summary::price).containsExactly(3000L, 2000L, 1000L);
+    }
+
+    @Test
     void imageRejectsOversizedAndSpoofedFilesBeforeCloudinaryCall() {
         MockMultipartFile spoofed = new MockMultipartFile(
                 "file", "fake.png", "image/png", "not png".getBytes());

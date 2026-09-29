@@ -32,17 +32,20 @@ public interface SalePostRepository extends JpaRepository<SalePost, Long> {
             join fetch p.category
             join fetch p.meetupLocation
             where p.status <> com.nsu.team.post.SalePost.Status.DELETED
-              and (cast(:q as String) is null or lower(p.title) like lower(concat('%', cast(:q as String), '%'))
-                   or lower(p.description) like lower(concat('%', cast(:q as String), '%')))
-              and (:categoryId is null or p.category.id = :categoryId)
-              and (:status is null or p.status = :status)
-              and (cast(:cursorTime as Instant) is null or p.createdAt < :cursorTime
+              and (:q = '' or lower(p.title) like lower(concat('%', :q, '%'))
+                   or lower(p.description) like lower(concat('%', :q, '%')))
+              and (:filterCategory = false or p.category.id = :categoryId)
+              and (:filterStatus = false or p.status = :status)
+              and (:hasCursor = false or p.createdAt < :cursorTime
                    or (p.createdAt = :cursorTime and p.id < :cursorId))
             order by p.createdAt desc, p.id desc
             """)
     List<SalePost> findLatestPage(@Param("q") String q,
+                                  @Param("filterCategory") boolean filterCategory,
                                   @Param("categoryId") Long categoryId,
+                                  @Param("filterStatus") boolean filterStatus,
                                   @Param("status") SalePost.Status status,
+                                  @Param("hasCursor") boolean hasCursor,
                                   @Param("cursorTime") Instant cursorTime,
                                   @Param("cursorId") Long cursorId,
                                   Pageable pageable);
@@ -53,17 +56,20 @@ public interface SalePostRepository extends JpaRepository<SalePost, Long> {
             join fetch p.category
             join fetch p.meetupLocation
             where p.status <> com.nsu.team.post.SalePost.Status.DELETED
-              and (cast(:q as String) is null or lower(p.title) like lower(concat('%', cast(:q as String), '%'))
-                   or lower(p.description) like lower(concat('%', cast(:q as String), '%')))
-              and (:categoryId is null or p.category.id = :categoryId)
-              and (:status is null or p.status = :status)
-              and (cast(:cursorPrice as BigDecimal) is null or p.price > :cursorPrice
+              and (:q = '' or lower(p.title) like lower(concat('%', :q, '%'))
+                   or lower(p.description) like lower(concat('%', :q, '%')))
+              and (:filterCategory = false or p.category.id = :categoryId)
+              and (:filterStatus = false or p.status = :status)
+              and (:hasCursor = false or p.price > :cursorPrice
                    or (p.price = :cursorPrice and p.id > :cursorId))
             order by p.price asc, p.id asc
             """)
     List<SalePost> findPriceAscPage(@Param("q") String q,
+                                    @Param("filterCategory") boolean filterCategory,
                                     @Param("categoryId") Long categoryId,
+                                    @Param("filterStatus") boolean filterStatus,
                                     @Param("status") SalePost.Status status,
+                                    @Param("hasCursor") boolean hasCursor,
                                     @Param("cursorPrice") BigDecimal cursorPrice,
                                     @Param("cursorId") Long cursorId,
                                     Pageable pageable);
@@ -74,17 +80,20 @@ public interface SalePostRepository extends JpaRepository<SalePost, Long> {
             join fetch p.category
             join fetch p.meetupLocation
             where p.status <> com.nsu.team.post.SalePost.Status.DELETED
-              and (cast(:q as String) is null or lower(p.title) like lower(concat('%', cast(:q as String), '%'))
-                   or lower(p.description) like lower(concat('%', cast(:q as String), '%')))
-              and (:categoryId is null or p.category.id = :categoryId)
-              and (:status is null or p.status = :status)
-              and (cast(:cursorPrice as BigDecimal) is null or p.price < :cursorPrice
+              and (:q = '' or lower(p.title) like lower(concat('%', :q, '%'))
+                   or lower(p.description) like lower(concat('%', :q, '%')))
+              and (:filterCategory = false or p.category.id = :categoryId)
+              and (:filterStatus = false or p.status = :status)
+              and (:hasCursor = false or p.price < :cursorPrice
                    or (p.price = :cursorPrice and p.id < :cursorId))
             order by p.price desc, p.id desc
             """)
     List<SalePost> findPriceDescPage(@Param("q") String q,
+                                     @Param("filterCategory") boolean filterCategory,
                                      @Param("categoryId") Long categoryId,
+                                     @Param("filterStatus") boolean filterStatus,
                                      @Param("status") SalePost.Status status,
+                                     @Param("hasCursor") boolean hasCursor,
                                      @Param("cursorPrice") BigDecimal cursorPrice,
                                      @Param("cursorId") Long cursorId,
                                      Pageable pageable);

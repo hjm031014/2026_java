@@ -5,6 +5,12 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/campus_marketplace}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
+    hikari:
+      connection-timeout: 10000
+      initialization-fail-timeout: 10000
+      data-source-properties:
+        connectTimeout: 10
+        socketTimeout: 30
   jpa:
     hibernate:
       ddl-auto: ${JPA_DDL_AUTO:update}

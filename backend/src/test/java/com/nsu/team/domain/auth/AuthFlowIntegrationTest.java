@@ -133,6 +133,32 @@ class AuthFlowIntegrationTest {
 	}
 
 	@Test
+	void duplicateNicknameIsRejectedEvenWithDifferentEmail() throws Exception {
+		MvcResult csrfResult = mockMvc.perform(get("/api/v1/auth/csrf")).andReturn();
+		String csrfToken = readData(csrfResult).get("csrfToken").asString();
+		Cookie csrfCookie = csrfResult.getResponse().getCookie("XSRF-TOKEN");
+
+		String firstSignup = objectMapper.writeValueAsString(new SignupPayload(
+				"nickname-owner@example.com", "password1234", "중복닉네임"));
+		mockMvc.perform(post("/api/v1/auth/signup")
+						.contentType(MediaType.APPLICATION_JSON)
+						.header("X-CSRF-Token", csrfToken)
+						.cookie(csrfCookie)
+						.content(firstSignup))
+				.andExpect(status().isCreated());
+
+		String secondSignup = objectMapper.writeValueAsString(new SignupPayload(
+				"another-email@example.com", "password1234", "중복닉네임"));
+		mockMvc.perform(post("/api/v1/auth/signup")
+						.contentType(MediaType.APPLICATION_JSON)
+						.header("X-CSRF-Token", csrfToken)
+						.cookie(csrfCookie)
+						.content(secondSignup))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.error.code").value("NICKNAME_ALREADY_EXISTS"));
+	}
+
+	@Test
 	void csrfTokenMismatchIsRejected() throws Exception {
 		MvcResult csrfResult = mockMvc.perform(get("/api/v1/auth/csrf")).andReturn();
 		Cookie csrfCookie = csrfResult.getResponse().getCookie("XSRF-TOKEN");

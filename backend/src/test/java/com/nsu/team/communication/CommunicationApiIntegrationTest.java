@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -126,6 +127,40 @@ class CommunicationApiIntegrationTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.data.items[0].name").value("통합 장소"))
 				.andExpect(jsonPath("$.data.items[0].description").value("통합 테스트 장소"));
+	}
+
+	@Test
+	void chatRoomCreationReturnsCreatedFirstThenOkOnReuse() throws Exception {
+		mockMvc.perform(post("/api/v1/chat/rooms")
+						.header("Authorization", bearer(buyerAccessToken))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"postId\":" + post.getId() + "}"))
+				.andExpect(status().isCreated());
+
+		mockMvc.perform(post("/api/v1/chat/rooms")
+						.header("Authorization", bearer(buyerAccessToken))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"postId\":" + post.getId() + "}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.otherUser.id").value(seller.getId().toString()));
+	}
+
+	@Test
+	void favoriteRemoveIsIdempotentAndReturnsNoContentWhenNotFavorited() throws Exception {
+		mockMvc.perform(delete("/api/v1/posts/{postId}/favorite", post.getId())
+						.header("Authorization", bearer(buyerAccessToken)))
+				.andExpect(status().isNoContent());
+
+		mockMvc.perform(put("/api/v1/posts/{postId}/favorite", post.getId())
+						.header("Authorization", bearer(buyerAccessToken)))
+				.andExpect(status().isNoContent());
+
+		mockMvc.perform(delete("/api/v1/posts/{postId}/favorite", post.getId())
+						.header("Authorization", bearer(buyerAccessToken)))
+				.andExpect(status().isNoContent());
+		mockMvc.perform(delete("/api/v1/posts/{postId}/favorite", post.getId())
+						.header("Authorization", bearer(buyerAccessToken)))
+				.andExpect(status().isNoContent());
 	}
 
 	@Test

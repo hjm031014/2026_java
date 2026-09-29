@@ -172,4 +172,36 @@ class CommunicationIntegrationTest {
         assertThat(data.hasMore()).isFalse();
     }
 
+    @Test
+    void cursorAndAfterSequenceCannotBeUsedTogether() {
+        var room = chatService.createRoom(buyer.getId(), new ChatDtos.CreateRoomRequest(post.getId()));
+
+        assertThatThrownBy(() -> chatService.listMessages(
+                Long.valueOf(room.value().id()), buyer.getId(), "some-cursor", 1L, 20))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).getErrorCode())
+                .isEqualTo(ErrorCode.VALIDATION_ERROR);
+    }
+
+    @Test
+    void chatHistoryIsPreservedAfterPostIsDeletedButNewRoomsAreNotAllowed() {
+        var room = chatService.createRoom(buyer.getId(), new ChatDtos.CreateRoomRequest(post.getId()));
+        chatService.sendMessage(Long.valueOf(room.value().id()), buyer.getId(),
+                new ChatDtos.SendMessageRequest(UUID.randomUUID(), "삭제 전 메시지"));
+
+        post.delete();
+        posts.saveAndFlush(post);
+
+        var history = chatService.listMessages(
+                Long.valueOf(room.value().id()), buyer.getId(), null, null, 20);
+        assertThat(((ChatDtos.HistoryMessages) history).items()).hasSize(1);
+        assertThat(chatService.listRooms(buyer.getId(), null, 20).items()).hasSize(1);
+
+        assertThatThrownBy(() -> chatService.createRoom(
+                outsider.getId(), new ChatDtos.CreateRoomRequest(post.getId())))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).getErrorCode())
+                .isEqualTo(ErrorCode.RESOURCE_NOT_FOUND);
+    }
+
 }
